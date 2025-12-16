@@ -17,4 +17,6 @@ export interface PlaceRepository {
   getNearbyPlaces(request: NearbyPlaceRequest): Promise<Place[]>;
   getPlaceDetails(placeId: string): Promise<Place>;
   autocompletePlaces(keyword: string): Promise<Place[]>;
+
+  getFeaturedPlaces(): Promise<Place[]>;
 }
