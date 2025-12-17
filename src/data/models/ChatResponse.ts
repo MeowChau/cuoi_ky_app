@@ -8,6 +8,9 @@ export interface ChatResponse {
     total_tokens: number;
   };
   timestamp: string;
+  // ✅ FLIGHT SEARCH RESULTS
+  flightResults?: any[];
+  isRoundTrip?: boolean;
 }
 
 export interface PlanTripResponse {
