@@ -6,6 +6,7 @@ import Colors from '../../../../theme/colors';
 import { Size } from '../../../../theme/sizes';
 import { TypingIndicator } from './TypingIndicator';
 import { ItineraryView } from './ItineraryView';
+import { FlightResultsView } from './FlightResultsView';
 
 interface MessageBubbleProps {
   message: ChatMessage;
@@ -147,6 +148,14 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               onEdit={onEditTripPlan}
             />
           </View>
+        ) : message.flightResults ? (
+          <View style={styles.tripPlanContainer}>
+            {message.text && renderFormattedText(message.text)}
+            <FlightResultsView 
+              flights={message.flightResults}
+              isRoundTrip={message.isRoundTrip}
+            />
+          </View>
         ) : (
           <View>
             {renderFormattedText(message.text)}
@@ -196,13 +205,13 @@ const styles = StyleSheet.create({
   },
 
   avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: Colors.Gray100,
     justifyContent: 'center',
     alignItems: 'center',
-    marginHorizontal: Size.Spacing8,
+    marginRight: Size.Spacing8,
     marginTop: Size.Spacing4,
   },
 
@@ -212,7 +221,7 @@ const styles = StyleSheet.create({
 
   bubble: {
     flex: 1,
-    maxWidth: '85%',
+    maxWidth: '95%',
     padding: Size.Spacing12,
     borderRadius: Size.Radius16,
   },
@@ -224,9 +233,10 @@ const styles = StyleSheet.create({
   },
 
   aiBubble: {
-    backgroundColor: Colors.Gray100,
+    backgroundColor: Colors.Gray50,
     borderBottomLeftRadius: Size.Radius4,
     marginLeft: 0,
+    maxWidth: '100%',
   },
 
   tripPlanContainer: {
