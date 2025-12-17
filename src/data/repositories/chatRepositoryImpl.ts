@@ -51,12 +51,40 @@ export class ChatRepositoryImpl implements ChatRepository {
     if (!response || !response.response) {
       throw new Error('AI không trả lời được. Vui lòng thử lại.');
     }
+
+    // ✅ PARSE FLIGHT DATA TỪ RESPONSE TEXT (Backend trả về JSON trong response string)
+    let flightResults: any[] | undefined;
+    let isRoundTrip: boolean | undefined;
+    let displayText = response.response;
+
+    try {
+      const jsonMatch = response.response.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        
+        if (parsed.type === 'flight_results' && parsed.flights) {
+          flightResults = parsed.flights;
+          isRoundTrip = false;
+          displayText = parsed.summary || 'Đây là kết quả tìm kiếm chuyến bay:';
+        } else if (parsed.type === 'roundtrip_flight_results' && parsed.flights) {
+          flightResults = parsed.flights;
+          isRoundTrip = true;
+          displayText = parsed.summary || 'Đây là kết quả tìm kiếm chuyến bay khứ hồi:';
+        }
+      }
+    } catch (parseError) {
+      // Không phải JSON flight data, giữ nguyên text
+      console.log('Response is not flight JSON, keeping original text');
+    }
   
     return {
       id: Date.now().toString(),
-      text: response.response,
+      text: displayText,
       sender: 'ai',
       timestamp: new Date(),
+      // ✅ FLIGHT RESULTS (nếu có)
+      flightResults,
+      isRoundTrip,
     };
   }
 
