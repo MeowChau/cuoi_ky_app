@@ -104,4 +104,4 @@ const styles = StyleSheet.create({
   destinationsContainer: {
     marginTop: 4,
   },
-});
+}); 
