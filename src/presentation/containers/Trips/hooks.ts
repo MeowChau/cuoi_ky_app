@@ -18,7 +18,7 @@ export const useTrips = () => {
     (state: RootState) => state.trips,
   );
 
-  const tripRepository = new TripRepositoryImpl();
+  const tripRepository = new TripRepositoryImpl();    
   const getTripsUseCase = new GetTripsUseCase(tripRepository);
   const deleteTripUseCase = new DeleteTripUseCase(tripRepository);
 
