@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Text } from 'react-native';
 import { CHCText } from '../../../components';
 import { ChatMessage } from '../../../../domain/entities/ChatMessage';
 import Colors from '../../../../theme/colors';
@@ -21,6 +21,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 }) => {
   const isUser = message.sender === 'user';
 
+  // --- 1. HIỂN THỊ TRẠNG THÁI ĐANG NHẬP ---
   if (message.isTyping) {
     return (
       <View style={[styles.container, styles.aiContainer]}>
@@ -31,104 +32,98 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     );
   }
 
-    // ✅ FORMAT TEXT: Tách thành các đoạn
-    const renderFormattedText = (text: string) => {
-      // ✅ VALIDATION: Kiểm tra text trước khi xử lý
-      if (!text || typeof text !== 'string') {
+  // --- 2. HÀM XỬ LÝ FORMAT TEXT (In đậm, List, Heading) ---
+  
+  // Helper: Xử lý in đậm **text** mà không làm vỡ layout (Inline Bold)
+  const processBoldText = (text: string, isUser: boolean) => {
+    const parts = text.split(/\*\*(.*?)\*\*/g);
+    return parts.map((part, i) => {
+      if (i % 2 === 1) {
+        // Phần text nằm giữa **...** sẽ được in đậm
+        return (
+          <Text 
+            key={i} 
+            style={{ 
+              fontWeight: 'bold', 
+              color: isUser ? Colors.White : Colors.Gray900 
+            }}
+          >
+            {part}
+          </Text>
+        );
+      }
+      // Phần text thường
+      return <Text key={i}>{part}</Text>;
+    });
+  };
+
+  const renderFormattedText = (text: string) => {
+    // Validation
+    if (!text || typeof text !== 'string') {
+      return (
+        <CHCText 
+          type="Body1" 
+          color={isUser ? Colors.White : Colors.Gray900}
+        >
+          {text || ''}
+        </CHCText>
+      );
+    }
+
+    const lines = text.split('\n');
+    
+    return lines.map((line, index) => {
+      // A. Xử lý Heading (## hoặc ###)
+      if (line.startsWith('###') || line.startsWith('##')) {
+        const content = line.replace(/^#+\s*/, '');
         return (
           <CHCText 
-            type="Body1" 
+            key={index}
+            type="Heading3" // Dùng Heading3 để không quá to
             color={isUser ? Colors.White : Colors.Gray900}
+            style={styles.heading}
           >
-            [Tin nhắn rỗng]
+            {content}
           </CHCText>
         );
       }
-  
-      const lines = text.split('\n');
-      
-      return lines.map((line, index) => {
-        // Heading (## hoặc ###)
-        if (line.startsWith('###')) {
-          return (
+
+      // B. Xử lý List Item (Gạch đầu dòng hoặc số 1. 2.)
+      const isBullet = line.trim().startsWith('-') || line.trim().startsWith('*');
+      const isOrdered = /^\d+\./.test(line.trim());
+
+      if (isBullet || isOrdered) {
+        return (
+          <View key={index} style={styles.listItemContainer}>
             <CHCText 
-              key={index}
-              type="Heading1" 
-              color={isUser ? Colors.White : Colors.Gray900}
-              style={styles.heading}
-            >
-              {line.replace(/^###\s*/, '')}
-            </CHCText>
-          );
-        }
-        
-        if (line.startsWith('##')) {
-          return (
-            <CHCText 
-              key={index}
-              type="Heading3" 
-              color={isUser ? Colors.White : Colors.Gray900}
-              style={styles.heading}
-            >
-              {line.replace(/^##\s*/, '')}
-            </CHCText>
-          );
-        }
-  
-        // Bold text (**text**)
-        if (line.includes('**')) {
-          const parts = line.split(/\*\*(.*?)\*\*/g);
-          return (
-            <CHCText 
-              key={index}
               type="Body1" 
-              color={isUser ? Colors.White : Colors.Gray900}
+              color={isUser ? Colors.White : Colors.Gray900} 
               style={styles.paragraph}
             >
-              {parts.map((part, i) => 
-                i % 2 === 1 ? (
-                  <CHCText key={i} type="Heading1" color={isUser ? Colors.White : Colors.Gray900}>
-                    {part}
-                  </CHCText>
-                ) : (
-                  part
-                )
-              )}
+              {processBoldText(line, isUser)}
             </CHCText>
-          );
-        }
-  
-        // List item (- hoặc *)
-        if (line.trim().startsWith('-') || line.trim().startsWith('*')) {
-          return (
-            <CHCText 
-              key={index}
-              type="Body2" 
-              color={isUser ? Colors.White : Colors.Gray800}
-              style={styles.listItem}
-            >
-              • {line.replace(/^[-*]\s*/, '')}
-            </CHCText>
-          );
-        }
-  
-        // Normal text
-        if (line.trim()) {
-          return (
-            <CHCText 
-              key={index}
-              type="Body1" 
-              color={isUser ? Colors.White : Colors.Gray900}
-              style={styles.paragraph}
-            >
-              {line}
-            </CHCText>
-          );
-        }
-  
-        return <View key={index} style={styles.spacer} />;
-      });
-    };
+          </View>
+        );
+      }
+
+      // C. Xử lý đoạn văn thường (có thể chứa in đậm)
+      if (line.trim()) {
+        return (
+          <CHCText 
+            key={index}
+            type="Body1" 
+            color={isUser ? Colors.White : Colors.Gray900}
+            style={styles.paragraph}
+          >
+            {processBoldText(line, isUser)}
+          </CHCText>
+        );
+      }
+
+      // Khoảng trắng giữa các đoạn
+      return <View key={index} style={styles.spacer} />;
+    });
+  };
 
   return (
     <View style={[styles.container, isUser ? styles.userContainer : styles.aiContainer]}>
@@ -141,7 +136,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       <View style={[styles.bubble, isUser ? styles.userBubble : styles.aiBubble]}>
         {message.tripPlan ? (
           <View style={styles.tripPlanContainer}>
-            {/* Chỉ hiển thị ItineraryView, không hiển thị text để tránh trùng lặp */}
             <ItineraryView 
               tripPlan={message.tripPlan}
               onConfirm={onConfirmTripPlan}
@@ -150,7 +144,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           </View>
         ) : message.flightResults ? (
           <View style={styles.tripPlanContainer}>
-            {message.text && renderFormattedText(message.text)}
+            {message.text && (
+              <View style={styles.textContainer}>
+                {renderFormattedText(message.text)}
+              </View>
+            )}
             <FlightResultsView 
               flights={message.flightResults}
               isRoundTrip={message.isRoundTrip}
@@ -221,7 +219,7 @@ const styles = StyleSheet.create({
 
   bubble: {
     flex: 1,
-    maxWidth: '95%',
+    maxWidth: '85%', // Giảm width để tin nhắn gọn gàng hơn
     padding: Size.Spacing12,
     borderRadius: Size.Radius16,
   },
@@ -243,25 +241,8 @@ const styles = StyleSheet.create({
     gap: Size.Spacing12,
   },
 
-  // ✅ FORMAT STYLES
-  heading: {
-    marginTop: Size.Spacing8,
-    marginBottom: Size.Spacing4,
-  },
-
-  paragraph: {
-    lineHeight: 20,
-    marginBottom: Size.Spacing4,
-  },
-
-  listItem: {
-    lineHeight: 20,
-    marginBottom: Size.Spacing4,
-    paddingLeft: Size.Spacing8,
-  },
-
-  spacer: {
-    height: Size.Spacing8,
+  textContainer: {
+    marginBottom: Size.Spacing12,
   },
 
   timestamp: {
@@ -269,7 +250,28 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     fontSize: 11,
   },
-  textContainer: {
-    marginBottom: Size.Spacing12,
+
+  // --- STYLES CHO FORMAT TEXT MỚI ---
+  
+  heading: {
+    marginTop: Size.Spacing12,
+    marginBottom: Size.Spacing8,
+    fontWeight: 'bold',
+    fontSize: 16, // Kích thước chữ vừa phải
+  },
+
+  paragraph: {
+    lineHeight: 22, // Tăng chiều cao dòng cho dễ đọc
+    marginBottom: Size.Spacing4,
+    fontSize: 14,
+  },
+
+  listItemContainer: {
+    marginBottom: Size.Spacing8, // Tách các mục list ra
+    paddingLeft: Size.Spacing4,
+  },
+
+  spacer: {
+    height: Size.Spacing8,
   },
 });
