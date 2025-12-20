@@ -9,7 +9,7 @@ import {
   authFailure,
 } from '../../store/slices/authSlice';
 import { GoogleLoginUseCase } from '../../../domain/usecases/GoogleLoginUseCase';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { UpdateProfileUseCase } from '../../../domain/usecases/UpdateProfileUseCase';
 
 export const useLogin = (onSuccess: () => void) => {
@@ -115,7 +115,13 @@ export const useGoogleLogin = (onSuccess: (user: any) => void) => {
         onSuccess(response.user);
       }
     } catch (error: any) {
-      console.error('Google Sign-In Error:', error);
+      // ⭐ LOG CHI TIẾT HƠN
+      console.error('============ Google Sign-In Error ============');
+      console.error('Error object:', JSON.stringify(error, null, 2));
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      console.error('==============================================');
       
       let errorMessage = 'Đăng nhập Google thất bại';
       
@@ -125,10 +131,14 @@ export const useGoogleLogin = (onSuccess: (user: any) => void) => {
         errorMessage = 'Đang xử lý...';
       } else if (error.code === 'PLAY_SERVICES_NOT_AVAILABLE') {
         errorMessage = 'Thiết bị không hỗ trợ Google Play Services';
+      } else if (error.code === statusCodes.SIGN_IN_REQUIRED) {
+        errorMessage = 'Cần đăng nhập lại';
+      } else if (error.message && error.message.includes('DEVELOPER_ERROR')) {
+        errorMessage = 'Lỗi config Google Sign-In. Vui lòng thử lại sau 15 phút.';
       } else if (error.message) {
         errorMessage = error.message;
       }
-
+    
       dispatch(authFailure(errorMessage));
       Alert.alert('Lỗi', errorMessage);
     } finally {

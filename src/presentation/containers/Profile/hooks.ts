@@ -13,6 +13,7 @@ import { UpdateProfileUseCase } from '../../../domain/usecases/UpdateProfileUseC
 import { AuthRepositoryImpl } from '../../../data/repositories/authRepositoryImpl';
 import { updateUserProfile, logout as logoutAction } from '../../store/slices/authSlice';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
 export const useProfile = (navigation: any) => {
   const dispatch = useDispatch();
@@ -68,6 +69,7 @@ export const useProfile = (navigation: any) => {
           style: 'destructive',
           onPress: async () => {
             try {
+              await GoogleSignin.signOut();
               await AsyncStorage.removeItem('accessToken');
               await AsyncStorage.removeItem('user');
               dispatch(logoutAction());

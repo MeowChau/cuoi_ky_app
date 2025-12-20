@@ -8,13 +8,15 @@ import { onboardingStyles } from './styles';
 import Colors from '../../../theme/colors';
 
 interface OnboardingScreenProps {
-  navigation: any;
+  navigation?: any;
+  onComplete?: () => void;
 }
 
-const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
-  // ✅ Sửa: Thực sự navigate sang LoginScreen
-  const navigateToLogin = () => {
-    navigation.replace('Login'); // Dùng replace để không quay lại được Onboarding
+const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }) => {
+  const handleComplete = () => {
+    if (onComplete) {
+      onComplete();
+    }
   };
 
   const {
@@ -23,7 +25,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
     handleScroll,
     handleNext,
     handleSkip,
-  } = useOnboarding(navigateToLogin);
+  } = useOnboarding(handleComplete);
 
   return (
     <View style={onboardingStyles.container}>

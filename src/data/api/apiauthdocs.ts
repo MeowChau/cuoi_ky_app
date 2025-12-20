@@ -149,3 +149,38 @@ Response body (400 - Error)
     }
 */
 
+export const REFRESH_TOKEN = `${BASE_URL}/auth/refresh`; // POST
+/*
+Request body:
+    {
+        "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    }
+Response (200):
+    {
+        "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    }
+Response (403): { "message": "Refresh Token không hợp lệ hoặc đã hết hạn" }
+*/
+
+export const GET_CURRENT_USER = `${BASE_URL}/auth/me`; // GET
+/*
+Headers: Authorization: Bearer {token}
+Response (200):
+    {
+        "user": {
+            "id": "694560b2a90313fa00e31ee9",
+            "email": "hoanghung@gmail.com",
+            "name": "HungHoang",
+            "phone": "0987654321",
+            "avatar": null,
+            "preferences": {
+                "budgetRange": {
+                    "min": 0,
+                    "max": 10000000
+                },
+                "interests": [],
+                "travelStyle": "cultural"
+            }
+        }
+    }
+*/

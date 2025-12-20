@@ -1,15 +1,11 @@
 import axios, { AxiosInstance } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '@env';
+import { TokenService } from '../services/TokenService';
 
-console.log('🔍 API_URL from .env:', API_URL);
-
-// ✅ THÊM /api vào baseURL
 const BASE_URL = API_URL
   ? `${API_URL}/api`
   : 'https://app-smart-travel-assistant.onrender.com/api';
-
-console.log('🚀 Using BASE_URL:', BASE_URL);
 
 const axiosInstance: AxiosInstance = axios.create({
   baseURL: BASE_URL,
@@ -22,12 +18,8 @@ const axiosInstance: AxiosInstance = axios.create({
 // Request Interceptor
 axiosInstance.interceptors.request.use(
   async (config: any) => {
-    console.log('📤 Request URL:', config.baseURL + config.url);
-    console.log('📤 Request Method:', config.method);
-    console.log('📤 Request Data:', config.data);
-
     try {
-      const token = await AsyncStorage.getItem('accessToken');
+      const token = await TokenService.getAccessToken();
       if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -36,27 +28,53 @@ axiosInstance.interceptors.request.use(
     }
     return config;
   },
-  error => {
-    console.error('❌ Request Error:', error);
-    return Promise.reject(error);
-  },
+  error => Promise.reject(error),
 );
 
-// Response Interceptor
+// Response Interceptor với Token Refresh
 axiosInstance.interceptors.response.use(
-  response => {
-    console.log('✅ Response Status:', response.status);
-    console.log('✅ Response Data:', response.data);
-    return response;
-  },
+  response => response,
   async error => {
-    console.error('❌ Response Error:', error.message);
-    console.error('❌ Response Status:', error.response?.status);
-    console.error('❌ Response Data:', error.response?.data);
+    const originalRequest = error.config;
 
-    if (error.response?.status === 401) {
-      await AsyncStorage.removeItem('accessToken');
+    // Nếu lỗi 401 và chưa retry
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      if (TokenService.getRefreshing()) {
+        // Đang refresh -> đợi trong queue
+        return new Promise((resolve, reject) => {
+          TokenService.addToQueue({ resolve, reject });
+        })
+          .then(token => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            return axiosInstance(originalRequest);
+          })
+          .catch(err => Promise.reject(err));
+      }
+
+      originalRequest._retry = true;
+      TokenService.setRefreshing(true);
+
+      try {
+        const newToken = await TokenService.refreshAccessToken();
+        
+        if (newToken) {
+          TokenService.processQueue(null, newToken);
+          originalRequest.headers.Authorization = `Bearer ${newToken}`;
+          return axiosInstance(originalRequest);
+        } else {
+          // Không refresh được -> clear và logout
+          TokenService.processQueue(new Error('Token refresh failed'), null);
+          // Emit event để navigate to Login
+          return Promise.reject(error);
+        }
+      } catch (refreshError) {
+        TokenService.processQueue(refreshError, null);
+        return Promise.reject(refreshError);
+      } finally {
+        TokenService.setRefreshing(false);
+      }
     }
+
     return Promise.reject(error);
   },
 );

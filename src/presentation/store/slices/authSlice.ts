@@ -1,9 +1,10 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { User } from '../../../domain/entities/User';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface AuthState {
   user: User | null;
-  token: string | null; // ⚠️ Đổi từ "accessToken" thành "token"
+  token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
@@ -42,14 +43,28 @@ const authSlice = createSlice({
     updateUserProfile: (state, action: PayloadAction<User>) => {
       state.user = action.payload;
     },
+    // Thêm action để logout từ toàn app khi token hết hạn
     logout: state => {
       state.user = null;
       state.token = null;
       state.isAuthenticated = false;
+      // Clear AsyncStorage
+      AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'user']);
+    },
+    // Thêm action để update token sau khi refresh
+    updateToken: (state, action: PayloadAction<string>) => {
+      state.token = action.payload;
     },
   },
 });
 
-export const { authStart, authSuccess, authFailure, logout, updateUserProfile } =
-  authSlice.actions;
+export const {
+  authStart,
+  authSuccess,
+  authFailure,
+  logout,
+  updateUserProfile,
+  updateToken,
+} = authSlice.actions;
+
 export default authSlice.reducer;
