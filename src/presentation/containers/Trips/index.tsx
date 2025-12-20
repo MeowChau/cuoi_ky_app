@@ -87,7 +87,7 @@ const TripsScreen: React.FC<TripsScreenProps> = ({ navigation }) => {
         data={trips}
         keyExtractor={item => item.id}
         renderItem={({ item }) => (
-          <TripCard
+          <TripCard 
             trip={item}
             onPress={() => console.log('Navigate to Trip Detail:', item.id)}
             onDelete={() => deleteTrip(item.id, item.title)}
