@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, StyleSheet, TextInput, Platform, SafeAreaView } from 'react-native';
 import { CHCTouchable, CHCText } from '../../../components';
 import Colors from '../../../../theme/colors';
 import { Size } from '../../../../theme/sizes';
@@ -24,10 +24,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-    >
+    <View style={styles.safeArea}>
       <View style={styles.container}>
         <View style={styles.inputContainer}>
           <TextInput
@@ -56,17 +53,21 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           </CHCTouchable>
         </View>
       </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    backgroundColor: Colors.White,
+  },
   container: {
     backgroundColor: Colors.White,
     borderTopWidth: 1,
     borderTopColor: Colors.Gray200,
     paddingHorizontal: Size.Spacing16,
-    paddingVertical: Size.Spacing12,
+    paddingTop: Size.Spacing12,
+    paddingBottom: Size.Spacing12,
   },
 
   inputContainer: {
@@ -77,7 +78,7 @@ const styles = StyleSheet.create({
 
   input: {
     flex: 1,
-    backgroundColor: Colors.Gray50,
+    backgroundColor: Colors.Gray100,
     borderRadius: Size.Radius24,
     paddingHorizontal: Size.Spacing16,
     paddingVertical: Size.Spacing12,

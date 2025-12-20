@@ -1,3 +1,9 @@
+export interface FamousSpot {
+  name: string;
+  description: string;
+  image?: string;
+}
+
 export interface Place {
   id: string;
   name: string;
@@ -9,6 +15,11 @@ export interface Place {
   image?: string;
   type?: string;
   category?: string;
+
+  specialties?: string;
+  bestTime?: string;
+  famousSpots?: FamousSpot[];
+
   budgetRange?: {
     min: number;
     max: number;

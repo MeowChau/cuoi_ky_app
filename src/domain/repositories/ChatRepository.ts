@@ -11,7 +11,7 @@ export interface SmartPlanRequest {
   startDate: string;
   duration: number;
   budget: number;
-  transportMode: 'flight' | 'train' | 'bus' | 'personal';
+  transportMode: 'flight' | 'personal';
 }
 
 export interface ChatRepository {

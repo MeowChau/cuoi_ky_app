@@ -6,6 +6,29 @@ import {
 import { ChatMessage, TripPlan } from '../../domain/entities/ChatMessage';
 import { chatApi } from '../api/chatApi';
 
+// Helper function để parse MongoDB date format hoặc ISO string
+function parseDate(dateValue: any): Date {
+  if (!dateValue) return new Date();
+  
+  // Nếu là MongoDB date format: {"$date": "2025-11-29T00:00:00.000Z"}
+  if (typeof dateValue === 'object' && dateValue.$date) {
+    return new Date(dateValue.$date);
+  }
+  
+  // Nếu là string ISO
+  if (typeof dateValue === 'string') {
+    return new Date(dateValue);
+  }
+  
+  // Nếu đã là Date object
+  if (dateValue instanceof Date) {
+    return dateValue;
+  }
+  
+  // Fallback
+  return new Date();
+}
+
 export class ChatRepositoryImpl implements ChatRepository {
   async getConversationHistory(conversationId: string): Promise<ChatMessage[]> {
     throw new Error('Method not implemented.');
@@ -28,12 +51,40 @@ export class ChatRepositoryImpl implements ChatRepository {
     if (!response || !response.response) {
       throw new Error('AI không trả lời được. Vui lòng thử lại.');
     }
+
+    // ✅ PARSE FLIGHT DATA TỪ RESPONSE TEXT (Backend trả về JSON trong response string)
+    let flightResults: any[] | undefined;
+    let isRoundTrip: boolean | undefined;
+    let displayText = response.response;
+
+    try {
+      const jsonMatch = response.response.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        
+        if (parsed.type === 'flight_results' && parsed.flights) {
+          flightResults = parsed.flights;
+          isRoundTrip = false;
+          displayText = parsed.summary || 'Đây là kết quả tìm kiếm chuyến bay:';
+        } else if (parsed.type === 'roundtrip_flight_results' && parsed.flights) {
+          flightResults = parsed.flights;
+          isRoundTrip = true;
+          displayText = parsed.summary || 'Đây là kết quả tìm kiếm chuyến bay khứ hồi:';
+        }
+      }
+    } catch (parseError) {
+      // Không phải JSON flight data, giữ nguyên text
+      console.log('Response is not flight JSON, keeping original text');
+    }
   
     return {
       id: Date.now().toString(),
-      text: response.response,
+      text: displayText,
       sender: 'ai',
       timestamp: new Date(),
+      // ✅ FLIGHT RESULTS (nếu có)
+      flightResults,
+      isRoundTrip,
     };
   }
 
@@ -57,73 +108,117 @@ export class ChatRepositoryImpl implements ChatRepository {
         throw new Error('Server không trả về dữ liệu');
       }
 
-      // ⬅️ TÍNH TOÁN BREAKDOWN NẾU BACKEND KHÔNG TRẢ VỀ
-      let budgetBreakdown = {
-        flights: 0,
-        accommodation: 0,
-        food: 0,
-        activities: 0,
-        transport: 0,
-        others: 0,
+      // ⬅️ XỬ LÝ 2 FORMAT RESPONSE KHÁC NHAU
+      // Format 1: {success, type, summary, data: itinerary}
+      // Format 2: {_id, title, budget, itinerary, ...} (SmartPlanResponse)
+      
+      let itinerary: any[] = [];
+      let responseData: any = response as any;
+
+      // Nếu là format cũ (có field 'data')
+      if ((response as any).data && Array.isArray((response as any).data)) {
+        itinerary = (response as any).data;
+        responseData = {
+          _id: `plan-${Date.now()}`,
+          title: (response as any).summary || `Lịch trình ${request.destination} ${request.duration} ngày`,
+          itinerary: itinerary,
+        };
+      } else if ((response as any).itinerary && Array.isArray((response as any).itinerary)) {
+        // Format mới (SmartPlanResponse)
+        itinerary = (response as any).itinerary;
+        responseData = response;
+      } else {
+        throw new Error('Response không có dữ liệu itinerary');
+      }
+
+      // ⬅️ TÍNH TOÁN BUDGET BREAKDOWN TỪ ITINERARY
+      let estFood = 0;
+      let estActivities = 0;
+      let estAccommodation = 0;
+
+      itinerary.forEach((day: any) => {
+        if (day.activities && Array.isArray(day.activities)) {
+          day.activities.forEach((act: any) => {
+            const cost = act.cost || 0;
+            if (act.type === 'meal') {
+              estFood += cost;
+            } else if (act.type === 'attraction') {
+              estActivities += cost;
+            } else if (act.type === 'checkin') {
+              estAccommodation += cost;
+            }
+          });
+        }
+      });
+
+      // Tính accommodation dựa trên số ngày nếu chưa có
+      if (estAccommodation === 0) {
+        estAccommodation = 500000 * request.duration; // 500k/ngày mặc định
+      } else {
+        // Nếu có check-in cost, nhân với số ngày
+        estAccommodation = estAccommodation * request.duration;
+      }
+
+      // Tính transport cost
+      let finalFlightCost = 0;
+      let finalTransportCost = 0;
+      
+      if (request.transportMode === 'flight') {
+        finalFlightCost = 2500000; // Vé máy bay khứ hồi
+        finalTransportCost = 150000 * request.duration; // Di chuyển nội thành
+      } else {
+        finalFlightCost = 0;
+        finalTransportCost = 500000 + (150000 * request.duration); // Xe riêng + di chuyển nội thành
+      }
+
+      const budgetBreakdown = {
+        flights: finalFlightCost,
+        accommodation: estAccommodation,
+        food: estFood,
+        activities: estActivities,
+        transport: finalTransportCost,
+        others: 500000,
       };
 
-      if (response.budget?.breakdown) {
-        // Nếu backend trả về breakdown, dùng nó
-        budgetBreakdown = {
-          flights: response.budget.breakdown.flights || 0,
-          accommodation: response.budget.breakdown.accommodation || 0,
-          food: response.budget.breakdown.food || 0,
-          activities: response.budget.breakdown.activities || 0,
-          transport: response.budget.breakdown.transport || 0,
-          others: response.budget.breakdown.others || 0,
-        };
-      } else {
-        // ⬅️ NẾU KHÔNG, TỰ TÍNH BREAKDOWN DỰA TRÊN TỔNG BUDGET
-        const totalBudget = response.budget?.total || request.budget;
+      const totalBudget = 
+        budgetBreakdown.flights +
+        budgetBreakdown.accommodation +
+        budgetBreakdown.food +
+        budgetBreakdown.activities +
+        budgetBreakdown.transport +
+        budgetBreakdown.others;
 
-        // Phân bổ ngân sách theo tỷ lệ chuẩn
-        budgetBreakdown = {
-          flights: Math.round(totalBudget * 0.3), // 30% vé máy bay
-          accommodation: Math.round(totalBudget * 0.25), // 25% khách sạn
-          food: Math.round(totalBudget * 0.2), // 20% ăn uống
-          activities: Math.round(totalBudget * 0.15), // 15% hoạt động
-          transport: Math.round(totalBudget * 0.05), // 5% di chuyển
-          others: Math.round(totalBudget * 0.05), // 5% khác
-        };
-
-        console.log('💡 Tự tính breakdown:', budgetBreakdown);
-      }
+      // Tính end date
+      const startDateObj = new Date(request.startDate);
+      const endDateObj = new Date(startDateObj);
+      endDateObj.setDate(endDateObj.getDate() + request.duration);
 
       // ⬅️ TRANSFORM RESPONSE THÀNH TRIPPLAN
       const tripPlan: TripPlan = {
-        id: response._id || `plan-${Date.now()}`,
-        title: response.title || `Lịch trình ${request.destination}`,
-        destination: response.destinations?.[0]?.name || request.destination,
-        startDate: response.startDate
-          ? new Date(response.startDate)
-          : new Date(request.startDate),
-        endDate: response.endDate
-          ? new Date(response.endDate)
-          : (() => {
-              const end = new Date(request.startDate);
-              end.setDate(end.getDate() + request.duration);
-              return end;
-            })(),
+        id: responseData._id || `plan-${Date.now()}`,
+        title: responseData.title || `Du lịch ${request.destination} ${request.duration} ngày`,
+        destination: responseData.destinations?.[0]?.name || request.destination,
+        startDate: responseData.startDate
+          ? parseDate(responseData.startDate)
+          : startDateObj,
+        endDate: responseData.endDate
+          ? parseDate(responseData.endDate)
+          : endDateObj,
         duration: request.duration,
         budget: {
-          total: response.budget?.total || request.budget,
-          breakdown: budgetBreakdown,
+          total: responseData.budget?.total || totalBudget,
+          breakdown: responseData.budget?.breakdown || budgetBreakdown,
         },
-        itinerary: (response.itinerary || []).map((day, index) => ({
+        itinerary: itinerary.map((day, index) => ({
           day: day.day || index + 1,
           date: day.date
-            ? new Date(day.date)
+            ? parseDate(day.date)
             : (() => {
                 const d = new Date(request.startDate);
                 d.setDate(d.getDate() + index);
                 return d;
               })(),
-          activities: (day.activities || []).map((activity, actIndex) => ({
+          activities: (day.activities || []).map((activity: any, actIndex: number) => ({
             id: activity._id || `activity-${index}-${actIndex}`,
             time: activity.time || '00:00',
             type: activity.type || 'other',
@@ -133,7 +228,7 @@ export class ChatRepositoryImpl implements ChatRepository {
             selected: activity.selected ?? true,
           })),
         })),
-        status: response.status || 'planning',
+        status: responseData.status || 'planning',
       };
 
       console.log(

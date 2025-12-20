@@ -5,12 +5,20 @@ import { ChatMessage } from '../../../../domain/entities/ChatMessage';
 import Colors from '../../../../theme/colors';
 import { Size } from '../../../../theme/sizes';
 import { TypingIndicator } from './TypingIndicator';
+import { ItineraryView } from './ItineraryView';
+import { FlightResultsView } from './FlightResultsView';
 
 interface MessageBubbleProps {
   message: ChatMessage;
+  onConfirmTripPlan?: (tripPlan: any) => void;
+  onEditTripPlan?: (tripPlan: any) => void;
 }
 
-export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
+export const MessageBubble: React.FC<MessageBubbleProps> = ({ 
+  message, 
+  onConfirmTripPlan, 
+  onEditTripPlan 
+}) => {
   const isUser = message.sender === 'user';
 
   if (message.isTyping) {
@@ -131,10 +139,31 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
       )}
 
       <View style={[styles.bubble, isUser ? styles.userBubble : styles.aiBubble]}>
-        {renderFormattedText(message.text)}
+        {message.tripPlan ? (
+          <View style={styles.tripPlanContainer}>
+            {/* Chỉ hiển thị ItineraryView, không hiển thị text để tránh trùng lặp */}
+            <ItineraryView 
+              tripPlan={message.tripPlan}
+              onConfirm={onConfirmTripPlan}
+              onEdit={onEditTripPlan}
+            />
+          </View>
+        ) : message.flightResults ? (
+          <View style={styles.tripPlanContainer}>
+            {message.text && renderFormattedText(message.text)}
+            <FlightResultsView 
+              flights={message.flightResults}
+              isRoundTrip={message.isRoundTrip}
+            />
+          </View>
+        ) : (
+          <View>
+            {renderFormattedText(message.text)}
+          </View>
+        )}
         
         <CHCText 
-          type="Body1" 
+          type="Body2" 
           color={isUser ? Colors.Primary100 : Colors.Gray400}
           style={styles.timestamp}
         >
@@ -160,28 +189,30 @@ function formatTime(date: Date): string {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    marginBottom: Size.Spacing16,
-    alignItems: 'flex-end',
+    marginBottom: Size.Spacing12,
+    alignItems: 'flex-start',
+    paddingHorizontal: Size.Spacing4,
   },
 
   userContainer: {
     justifyContent: 'flex-end',
-    paddingLeft: 60,
+    paddingLeft: 0,
   },
 
   aiContainer: {
     justifyContent: 'flex-start',
-    paddingRight: 60,
+    paddingRight: 0,
   },
 
   avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: Colors.Gray100,
     justifyContent: 'center',
     alignItems: 'center',
-    marginHorizontal: Size.Spacing8,
+    marginRight: Size.Spacing8,
+    marginTop: Size.Spacing4,
   },
 
   userAvatar: {
@@ -189,7 +220,8 @@ const styles = StyleSheet.create({
   },
 
   bubble: {
-    maxWidth: '75%',
+    flex: 1,
+    maxWidth: '95%',
     padding: Size.Spacing12,
     borderRadius: Size.Radius16,
   },
@@ -197,11 +229,18 @@ const styles = StyleSheet.create({
   userBubble: {
     backgroundColor: Colors.Primary500,
     borderBottomRightRadius: Size.Radius4,
+    marginRight: 0,
   },
 
   aiBubble: {
-    backgroundColor: Colors.Gray100,
+    backgroundColor: Colors.Gray50,
     borderBottomLeftRadius: Size.Radius4,
+    marginLeft: 0,
+    maxWidth: '100%',
+  },
+
+  tripPlanContainer: {
+    gap: Size.Spacing12,
   },
 
   // ✅ FORMAT STYLES
@@ -226,7 +265,11 @@ const styles = StyleSheet.create({
   },
 
   timestamp: {
-    marginTop: Size.Spacing8,
+    marginTop: Size.Spacing4,
     textAlign: 'right',
+    fontSize: 11,
+  },
+  textContainer: {
+    marginBottom: Size.Spacing12,
   },
 });

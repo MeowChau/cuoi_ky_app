@@ -16,14 +16,26 @@ import {
   CHCDropdown,
 } from '../../components';
 import { useCreateTrip, TRANSPORT_MODES } from './hooks';
+import { ItineraryEditor } from './components/ItineraryEditor';
 import { createTripStyles } from './styles';
 import Colors from '../../../theme/colors';
+import { Trip } from '../../../domain/entities/Trip';
 
 interface CreateTripScreenProps {
   navigation: any;
+  route?: {
+    params?: {
+      tripId?: string;
+      editMode?: boolean;
+      tripData?: Trip;
+    };
+  };
 }
 
-const CreateTripScreen: React.FC<CreateTripScreenProps> = ({ navigation }) => {
+const CreateTripScreen: React.FC<CreateTripScreenProps> = ({ navigation, route }) => {
+  const isEditMode = route?.params?.editMode || false;
+  const tripData = route?.params?.tripData;
+
   const {
     title,
     setTitle,
@@ -37,11 +49,13 @@ const CreateTripScreen: React.FC<CreateTripScreenProps> = ({ navigation }) => {
     setTransportMode,
     budget,
     setBudget,
+    itinerary,
+    setItinerary,
     isLoading,
     handleCreateTrip,
   } = useCreateTrip(() => {
     navigation.goBack();
-  });
+  }, isEditMode, tripData);
 
   return (
     <SafeAreaView style={createTripStyles.container}>
@@ -62,7 +76,9 @@ const CreateTripScreen: React.FC<CreateTripScreenProps> = ({ navigation }) => {
             </CHCTouchable>
 
             <View style={createTripStyles.headerTitle}>
-              <CHCText type="Heading2">Tạo chuyến đi mới</CHCText>
+              <CHCText type="Heading2">
+                {isEditMode ? 'Chỉnh sửa chuyến đi' : 'Tạo chuyến đi mới'}
+              </CHCText>
             </View>
           </View>
 
@@ -165,13 +181,24 @@ const CreateTripScreen: React.FC<CreateTripScreenProps> = ({ navigation }) => {
                 keyboardType="numeric"
               />
             </View>
+
+
+            {/* Itinerary Editor */}
+            <View style={createTripStyles.inputGroup}>
+              <ItineraryEditor
+                itinerary={itinerary}
+                startDate={startDate}
+                endDate={endDate}
+                onChange={setItinerary}
+              />
+            </View>
           </View>
         </ScrollView>
 
         {/* Footer Button */}
         <View style={createTripStyles.buttonContainer}>
           <CHCButton
-            title="Tạo chuyến đi"
+            title={isEditMode ? 'Cập nhật chuyến đi' : 'Tạo chuyến đi'}
             onPress={handleCreateTrip}
             variant="primary"
             isLoading={isLoading}

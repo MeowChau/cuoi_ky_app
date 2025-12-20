@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   SafeAreaView,
@@ -8,9 +8,11 @@ import {
 } from 'react-native';
 import { CHCText, CHCButton } from '../../components';
 import { TripCard } from './components/TripCard';
+import { TripDetailModal } from './components/TripDetailModal';
 import { useTrips } from './hooks';
 import { tripsStyles } from './styles'; // ⭐ Import styles
 import Colors from '../../../theme/colors';
+import { Trip } from '../../../domain/entities/Trip';
 
 interface TripsScreenProps {
   navigation: any;
@@ -18,6 +20,34 @@ interface TripsScreenProps {
 
 const TripsScreen: React.FC<TripsScreenProps> = ({ navigation }) => {
   const { trips, isLoading, error, refreshTrips, deleteTrip } = useTrips();
+  const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+
+  const handleTripPress = (trip: Trip) => {
+    setSelectedTrip(trip);
+    setIsModalVisible(true);
+  };
+
+  const handleEditTrip = (trip: Trip) => {
+    navigation.navigate('CreateTrip', { 
+      tripId: trip.id,
+      editMode: true,
+      tripData: trip 
+    });
+  };
+
+  const handleDeleteTrip = (tripId: string, tripTitle: string) => {
+    deleteTrip(tripId, tripTitle);
+    if (selectedTrip?.id === tripId) {
+      setIsModalVisible(false);
+      setSelectedTrip(null);
+    }
+  };
+
+  const handleCloseModal = () => {
+    setIsModalVisible(false);
+    setSelectedTrip(null);
+  };
 
   const renderEmpty = () => {
     if (isLoading) {
@@ -89,8 +119,8 @@ const TripsScreen: React.FC<TripsScreenProps> = ({ navigation }) => {
         renderItem={({ item }) => (
           <TripCard
             trip={item}
-            onPress={() => console.log('Navigate to Trip Detail:', item.id)}
-            onDelete={() => deleteTrip(item.id, item.title)}
+            onPress={() => handleTripPress(item)}
+            onDelete={() => handleDeleteTrip(item.id, item.title)}
           />
         )}
         contentContainerStyle={[
@@ -107,6 +137,16 @@ const TripsScreen: React.FC<TripsScreenProps> = ({ navigation }) => {
           />
         }
         ListEmptyComponent={renderEmpty}
+      />
+
+      {/* Trip Detail Modal */}
+      <TripDetailModal
+        visible={isModalVisible}
+        trip={selectedTrip}
+        onClose={handleCloseModal}
+        onEdit={handleEditTrip}
+        onDelete={handleDeleteTrip}
+        isLoading={isLoading}
       />
     </SafeAreaView>
   );

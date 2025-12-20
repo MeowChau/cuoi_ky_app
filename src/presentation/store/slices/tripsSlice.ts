@@ -33,6 +33,12 @@ const tripsSlice = createSlice({
     tripCreated: (state, action: PayloadAction<Trip>) => {  // ⭐ THÊM ACTION NÀY
       state.trips.unshift(action.payload); // Thêm vào đầu danh sách
     },
+    tripUpdated: (state, action: PayloadAction<Trip>) => {
+      const index = state.trips.findIndex(trip => trip.id === action.payload.id);
+      if (index !== -1) {
+        state.trips[index] = action.payload;
+      }
+    },
     tripDeleted: (state, action: PayloadAction<string>) => {
       state.trips = state.trips.filter(trip => trip.id !== action.payload);
     },
@@ -47,6 +53,7 @@ export const {
   tripsSuccess,
   tripsFailure,
   tripCreated,  // ⭐ EXPORT ACTION MỚI
+  tripUpdated,
   tripDeleted,
   clearTripsError,
 } = tripsSlice.actions;

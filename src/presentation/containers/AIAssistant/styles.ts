@@ -5,20 +5,23 @@ import StyleGlobal from '../../../theme/styleGlobals';
 
 export const aiAssistantStyles = StyleSheet.create({
   container: {
-    ...StyleGlobal.container,
+    flex: 1,
     backgroundColor: Colors.White,
+  },
+
+  headerSafeArea: {
+    backgroundColor: Colors.White,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.Gray200,
   },
 
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: Size.Spacing24,
-    paddingTop: Size.Spacing16,
-    paddingBottom: Size.Spacing12,
+    paddingHorizontal: Size.Spacing16,
+    paddingVertical: Size.Spacing12,
     backgroundColor: Colors.White,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.Gray200,
   },
 
   headerLeft: {
@@ -28,41 +31,42 @@ export const aiAssistantStyles = StyleSheet.create({
   },
 
   headerIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: Colors.Primary100,
     justifyContent: 'center',
     alignItems: 'center',
   },
 
   headerTitle: {
-    marginBottom: Size.Spacing4,
+    // Removed marginBottom for compact header
   },
 
   // ✅ THÊM CLEAR BUTTON
   clearButton: {
     padding: Size.Spacing8,
+    paddingHorizontal: Size.Spacing12,
   },
 
   // ✅ THÊM ERROR BANNER
   errorBanner: {
-    backgroundColor: Colors.Error50,
+    backgroundColor: Colors.Red100,
     paddingHorizontal: Size.Spacing16,
-    paddingVertical: Size.Spacing12,
+    paddingVertical: Size.Spacing8,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.Error200,
+    borderBottomColor: Colors.Red300,
   },
 
   chatContainer: {
     flex: 1,
-    backgroundColor: Colors.Gray50,
+    backgroundColor: Colors.White,
   },
 
   messagesList: {
-    paddingHorizontal: Size.Spacing16,
-    paddingTop: Size.Spacing16,
-    paddingBottom: Size.Spacing24,
+    paddingHorizontal: Size.Spacing12,
+    paddingTop: Size.Spacing12,
+    paddingBottom: Size.Spacing16,
   },
 
   emptyContainer: {

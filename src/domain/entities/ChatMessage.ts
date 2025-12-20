@@ -5,6 +5,8 @@ export interface ChatMessage {
   timestamp: Date;
   isTyping?: boolean;
   tripPlan?: TripPlan; // ✅ THÊM TRIP PLAN CHO MESSAGE ĐẶC BIỆT
+  flightResults?: any[]; // ✅ KẾT QUẢ TÌM KIẾM CHUYẾN BAY
+  isRoundTrip?: boolean; // ✅ LOẠI HÌNH: MỘT CHIỀU HAY KHỨ HỒI
 }
 
 // ✅ MỚI: TRIP PLAN ENTITY

@@ -8,6 +8,9 @@ export interface ChatResponse {
     total_tokens: number;
   };
   timestamp: string;
+  // ✅ FLIGHT SEARCH RESULTS
+  flightResults?: any[];
+  isRoundTrip?: boolean;
 }
 
 export interface PlanTripResponse {
@@ -69,7 +72,7 @@ export interface SmartPlanResponse {
   userId?: string;
   startDate: string;
   endDate: string;
-  transportMode: 'flight' | 'train' | 'bus' | 'personal';
+  transportMode: 'flight' | 'personal';
   destinations?: Destination[]; // ⬅️ THÊM OPTIONAL
   itinerary: DayItinerary[];
   budget: Budget;

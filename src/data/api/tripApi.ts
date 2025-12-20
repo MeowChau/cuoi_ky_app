@@ -23,8 +23,11 @@ export interface UpdateTripRequest {
   title?: string;
   startDate?: string;
   endDate?: string;
+  origin?: string;
+  transportMode?: string;
   budget?: any;
   destinations?: any[];
+  itinerary?: any[];
 }
 
 export const tripApi = {

@@ -1,14 +1,17 @@
 // src/presentation/containers/Home/hooks.ts
 import { useState, useEffect } from 'react';
 import { SearchPlacesUseCase } from '../../../domain/usecases/SearchPlacesUseCase';
-import { GetWeatherForecastUseCase } from '../../../domain/usecases/GetWeatherForecastUseCase'; // ✨ NEW
+import { GetWeatherForecastUseCase } from '../../../domain/usecases/GetWeatherForecastUseCase';
+import { GetFeaturedPlacesUseCase } from '../../../domain/usecases/GetFeaturedPlacesUseCase'; // ✅ Import usecase này
 import { PlaceRepositoryImpl } from '../../../data/repositories/placeRepositoryImpl';
-import { WeatherRepositoryImpl } from '../../../data/repositories/weatherRepositoryImpl'; // ✨ NEW
+import { WeatherRepositoryImpl } from '../../../data/repositories/weatherRepositoryImpl';
 import { Place } from '../../../domain/entities/Place';
-import { Weather, City } from '../../../domain/entities/Weather'; // ✨ NEW
-import { VIETNAM_CITIES } from '../../../data/api/weatherApi'; // ✨ NEW
+import { Weather, City } from '../../../domain/entities/Weather';
+import { VIETNAM_CITIES } from '../../../data/api/weatherApi';
 
-// ✅ EXISTING HOOK
+// ----------------------------------------------------
+// 1. HOOK: SEARCH (TÌM KIẾM)
+// ----------------------------------------------------
 export const useSearch = () => {
   const [searchResults, setSearchResults] = useState<Place[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -21,11 +24,6 @@ export const useSearch = () => {
     if (!keyword || keyword.trim().length === 0) {
       setSearchResults([]);
       setError(null);
-      return;
-    }
-
-    if (keyword.trim().length < 2) {
-      setSearchResults([]);
       return;
     }
 
@@ -63,7 +61,41 @@ export const useSearch = () => {
   };
 };
 
-// ✨ NEW HOOK - WEATHER FORECAST
+// ----------------------------------------------------
+// 2. HOOK: HOME DATA (LẤY ĐỊA ĐIỂM NỔI BẬT TỪ API)
+// ----------------------------------------------------
+// 🔥 Đây là phần bị thiếu gây ra lỗi
+export const useHomeData = () => {
+  const [featuredPlaces, setFeaturedPlaces] = useState<Place[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const placeRepository = new PlaceRepositoryImpl();
+  const getFeaturedUseCase = new GetFeaturedPlacesUseCase(placeRepository);
+
+  useEffect(() => {
+    fetchFeatured();
+  }, []);
+
+  const fetchFeatured = async () => {
+    setIsLoading(true);
+    try {
+      const places = await getFeaturedUseCase.execute();
+      setFeaturedPlaces(places);
+    } catch (err: any) {
+      console.error('Error fetching home data:', err);
+      setError('Không thể tải dữ liệu');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { featuredPlaces, isLoading, error, refetch: fetchFeatured };
+};
+
+// ----------------------------------------------------
+// 3. HOOK: WEATHER (DỰ BÁO THỜI TIẾT)
+// ----------------------------------------------------
 export const useWeatherForecast = () => {
   const [selectedCity, setSelectedCity] = useState<City>(VIETNAM_CITIES[0]);
   const [weatherData, setWeatherData] = useState<Weather | null>(null);
@@ -73,7 +105,6 @@ export const useWeatherForecast = () => {
   const weatherRepository = new WeatherRepositoryImpl();
   const getWeatherUseCase = new GetWeatherForecastUseCase(weatherRepository);
 
-  // ✅ FETCH WEATHER KHI CHỌN THÀNH PHỐ
   useEffect(() => {
     fetchWeather();
   }, [selectedCity]);
@@ -112,7 +143,7 @@ export const useWeatherForecast = () => {
   };
 };
 
-// ✅ TYPE EXPORTS (EXISTING)
+// Type exports
 export interface PlaceType {
   id: string;
   name: string;

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, ScrollView, SafeAreaView, StatusBar } from 'react-native';
+import { View, ScrollView, SafeAreaView, StatusBar, KeyboardAvoidingView, Platform } from 'react-native';
 import { CHCText, CHCTouchable } from '../../components';
 import { MessageBubble } from './components/MessageBubble';
 import { ChatInput } from './components/ChatInput';
@@ -22,6 +22,8 @@ const AIAssistantScreen: React.FC = () => {
     handleSend,
     handleSuggestedPrompt,
     handleCreateSmartPlan,
+    handleConfirmTripPlan,
+    handleEditTripPlan,
     showSmartPlanForm,
     setShowSmartPlanForm,
     clearChat,
@@ -30,52 +32,59 @@ const AIAssistantScreen: React.FC = () => {
   const showSuggestions = messages.length <= 1;
 
   return (
-    <SafeAreaView style={aiAssistantStyles.container}>
+    <KeyboardAvoidingView 
+      style={aiAssistantStyles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+    >
       <StatusBar barStyle="dark-content" backgroundColor={Colors.White} />
 
-      {/* Header */}
-      <View style={aiAssistantStyles.header}>
-        <View style={aiAssistantStyles.headerLeft}>
-          <View style={aiAssistantStyles.headerIcon}>
-            <CHCText type="Heading2">🤖</CHCText>
-          </View>
-          <View>
+      {/* Header - Compact */}
+      <SafeAreaView style={aiAssistantStyles.headerSafeArea}>
+        <View style={aiAssistantStyles.header}>
+          <View style={aiAssistantStyles.headerLeft}>
+            <View style={aiAssistantStyles.headerIcon}>
+              <CHCText type="Heading2">🤖</CHCText>
+            </View>
             <CHCText type="Heading3" style={aiAssistantStyles.headerTitle}>
               Trợ lý AI
             </CHCText>
-            <CHCText type="Body3" color={Colors.Gray500}>
-              {isLoading ? 'Đang trả lời...' : 'Trực tuyến'}
-            </CHCText>
           </View>
-        </View>
 
-        {messages.length > 1 && (
-          <CHCTouchable onPress={clearChat} style={aiAssistantStyles.clearButton}>
-            <CHCText type="Body2" color={Colors.Error500}>
-              🗑️ Xóa
-            </CHCText>
-          </CHCTouchable>
-        )}
-      </View>
+          {messages.length > 1 && (
+            <CHCTouchable onPress={clearChat} style={aiAssistantStyles.clearButton}>
+              <CHCText type="Body2" color={Colors.Gray600}>
+                Xóa
+              </CHCText>
+            </CHCTouchable>
+          )}
+        </View>
+      </SafeAreaView>
 
       {/* Error Banner */}
       {error && (
         <View style={aiAssistantStyles.errorBanner}>
-          <CHCText type="Body2" color={Colors.Error500}>
+          <CHCText type="Body2" color={Colors.Red500}>
             ⚠️ {error}
           </CHCText>
         </View>
       )}
 
-      {/* Chat Messages */}
+      {/* Chat Messages - Full Screen */}
       <View style={aiAssistantStyles.chatContainer}>
         <ScrollView
           ref={scrollViewRef}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={aiAssistantStyles.messagesList}
+          keyboardShouldPersistTaps="handled"
         >
           {messages.map((message) => (
-            <MessageBubble key={message.id} message={message} />
+            <MessageBubble 
+              key={message.id} 
+              message={message}
+              onConfirmTripPlan={handleConfirmTripPlan}
+              onEditTripPlan={handleEditTripPlan}
+            />
           ))}
 
           {showSuggestions && (
@@ -104,7 +113,7 @@ const AIAssistantScreen: React.FC = () => {
           setShowSmartPlanForm(false);
         }}
       />
-    </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 };
 

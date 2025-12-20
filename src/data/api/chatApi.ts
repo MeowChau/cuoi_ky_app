@@ -34,12 +34,12 @@ smartPlan: async (params: {
     startDate: string;
     duration: number;
     budget: number;
-    transportMode: 'flight' | 'train' | 'bus' | 'personal';
-  }): Promise<SmartPlanResponse> => {
+    transportMode: 'flight' | 'personal';
+  }): Promise<any> => {
     try {
       console.log('📤 Smart Plan Request:', JSON.stringify(params, null, 2));
 
-      const response = await axiosInstance.post<SmartPlanResponse>(
+      const response = await axiosInstance.post<any>(
         '/ai/smart-plan',
         params,
         {
@@ -51,18 +51,27 @@ smartPlan: async (params: {
       console.log('✅ Smart Plan Headers:', response.headers);
       console.log('✅ Smart Plan Full Response:', JSON.stringify(response.data, null, 2)); // ⬅️ LOG ĐẦY ĐỦ
 
-      // ⬅️ KIỂM TRA CHI TIẾT BREAKDOWN
-      if (response.data?.budget?.breakdown) {
-        console.log('💰 Budget Breakdown:', response.data.budget.breakdown);
-      } else {
-        console.warn('⚠️ Không có budget breakdown từ server!');
-      }
-
       if (!response.data) {
         throw new Error('Server không trả về dữ liệu');
       }
 
-      return response.data;
+      // ⬅️ NORMALIZE RESPONSE: Xử lý cả 2 format
+      const rawData = response.data;
+      
+      // Format 1: {success, type, summary, data: itinerary}
+      if (rawData.data && Array.isArray(rawData.data)) {
+        console.log('📋 Detected format: {success, type, summary, data}');
+        return {
+          success: rawData.success,
+          type: rawData.type,
+          summary: rawData.summary,
+          data: rawData.data, // itinerary array
+        };
+      }
+      
+      // Format 2: SmartPlanResponse với đầy đủ fields
+      console.log('📋 Detected format: SmartPlanResponse');
+      return rawData;
     } catch (error: any) {
       console.error('❌ AI Smart Plan Error:', {
         message: error.message,
@@ -159,3 +168,4 @@ smartPlan: async (params: {
     }
   },
 };
+

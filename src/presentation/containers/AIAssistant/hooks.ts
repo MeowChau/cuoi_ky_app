@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
-import { Alert } from 'react-native'; // ⬅️ THÊM IMPORT ALERT
+import { Alert } from 'react-native';
 import { SendMessageUseCase } from '../../../domain/usecases/SendMessageUseCase';
 import { CreateSmartPlanUseCase } from '../../../domain/usecases/CreateSmartPlanUseCase';
+import { CreateTripUseCase } from '../../../domain/usecases/CreateTripUseCase';
 import { ChatRepositoryImpl } from '../../../data/repositories/chatRepositoryImpl';
+import { TripRepositoryImpl } from '../../../data/repositories/tripRepositoryImpl';
 import { ChatMessage, TripPlan } from '../../../domain/entities/ChatMessage';
 import { MOCK_CHAT_HISTORY } from './mockData';
+import { CreateTripRequest } from '../../../data/api/tripApi';
 
 export const useChat = () => {
   const [messages, setMessages] = useState<ChatMessage[]>(MOCK_CHAT_HISTORY);
@@ -15,8 +18,10 @@ export const useChat = () => {
   const scrollViewRef = useRef<any>(null);
 
   const chatRepository = new ChatRepositoryImpl();
+  const tripRepository = new TripRepositoryImpl();
   const sendMessageUseCase = new SendMessageUseCase(chatRepository);
   const createSmartPlanUseCase = new CreateSmartPlanUseCase(chatRepository);
+  const createTripUseCase = new CreateTripUseCase(tripRepository);
 
   useEffect(() => {
     setTimeout(() => {
@@ -101,7 +106,7 @@ export const useChat = () => {
     startDate: string;
     duration: number;
     budget: number;
-    transportMode: 'flight' | 'train' | 'bus' | 'personal';
+    transportMode: 'flight' |  'personal';
   }) => {
     console.log('🚀 handleCreateSmartPlan called with:', params);
 
@@ -142,7 +147,7 @@ export const useChat = () => {
 
       const planMessage: ChatMessage = {
         id: Date.now().toString(),
-        text: formatTripPlanMessage(tripPlan),
+        text: '', // Không hiển thị text để tránh trùng lặp với ItineraryView
         sender: 'ai',
         timestamp: new Date(),
         tripPlan,
@@ -201,6 +206,104 @@ export const useChat = () => {
     setError(null);
   };
 
+  // ✅ HANDLE CONFIRM TRIP PLAN
+  const handleConfirmTripPlan = async (tripPlan: TripPlan) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const budgetPayload = {
+        total: tripPlan.budget.total,
+        flights: tripPlan.budget.breakdown?.flights,
+        hotels: tripPlan.budget.breakdown?.accommodation,
+        food: tripPlan.budget.breakdown?.food,
+        activities: tripPlan.budget.breakdown?.activities,
+        transport: tripPlan.budget.breakdown?.transport,
+        others: tripPlan.budget.breakdown?.others,
+        breakdown: tripPlan.budget.breakdown,
+      };
+
+      // Transform TripPlan to CreateTripRequest
+      const tripRequest: CreateTripRequest = {
+        title: tripPlan.title,
+        startDate: tripPlan.startDate.toISOString().split('T')[0],
+        endDate: tripPlan.endDate.toISOString().split('T')[0],
+        transportMode: 'personal',
+        destinations: [
+          {
+            name: tripPlan.destination,
+            arrivalDate: tripPlan.startDate.toISOString().split('T')[0],
+            departureDate: tripPlan.endDate.toISOString().split('T')[0],
+          },
+        ],
+        budget: {
+          total: tripPlan.budget.total,
+        },
+      };
+
+      // Tạo trip cơ bản trước
+      const trip = await createTripUseCase.execute(tripRequest);
+
+      // Sau đó update với itinerary và budget breakdown đầy đủ
+      if (trip.id) {
+        await tripRepository.updateTrip(trip.id, {
+          budget: budgetPayload,
+          destinations: tripRequest.destinations,
+          itinerary: tripPlan.itinerary?.map(day => ({
+            day: day.day,
+            date: day.date.toISOString().split('T')[0],
+            activities: day.activities.map(act => ({
+              time: act.time,
+              type: act.type,
+              title: act.title,
+              duration: act.duration,
+              cost: act.cost,
+              selected: act.selected ?? true,
+            })),
+          })),
+        } as any);
+      }
+
+      Alert.alert(
+        '✅ Thành công!',
+        `Đã lưu lịch trình "${tripPlan.title}" .\n\nBạn có thể xem trong mục "Chuyến đi".`,
+        [{ text: 'OK' }],
+      );
+
+      // Thêm message xác nhận vào chat
+      const confirmMessage: ChatMessage = {
+        id: Date.now().toString(),
+        text: `✅ Đã lưu lịch trình "${tripPlan.title}"  thành công!`,
+        sender: 'ai',
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, confirmMessage]);
+
+      // Scroll to bottom
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    } catch (err: any) {
+      console.error('❌ Confirm trip plan error:', err);
+      setError(err.message || 'Lưu lịch trình thất bại');
+      Alert.alert(
+        '❌ Lỗi',
+        err.message || 'Không thể lưu lịch trình. Vui lòng thử lại.',
+        [{ text: 'OK' }],
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // ✅ HANDLE EDIT TRIP PLAN
+  const handleEditTripPlan = (tripPlan: TripPlan) => {
+    // Mở lại SmartPlanForm với dữ liệu hiện tại
+    setShowSmartPlanForm(true);
+    // Có thể pre-fill form với dữ liệu từ tripPlan
+    console.log('Edit trip plan:', tripPlan);
+  };
+
   return {
     messages,
     inputText,
@@ -211,6 +314,8 @@ export const useChat = () => {
     handleSend,
     handleSuggestedPrompt,
     handleCreateSmartPlan,
+    handleConfirmTripPlan,
+    handleEditTripPlan,
     showSmartPlanForm,
     setShowSmartPlanForm,
     clearChat,

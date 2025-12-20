@@ -8,8 +8,9 @@ export class SearchPlacesUseCase {
   constructor(private placeRepository: PlaceRepository) {}
 
   async execute(request: SearchPlaceRequest): Promise<Place[]> {
-    if (!request.keyword || request.keyword.trim().length < 2) {
-      throw new Error('Từ khóa tìm kiếm phải có ít nhất 2 ký tự');
+    // Chỉ cần có ít nhất 1 ký tự (để hỗ trợ gợi ý khi vừa gõ)
+    if (!request.keyword || request.keyword.trim().length < 1) {
+      throw new Error('Vui lòng nhập từ khóa tìm kiếm');
     }
 
     return await this.placeRepository.searchPlaces(request);
