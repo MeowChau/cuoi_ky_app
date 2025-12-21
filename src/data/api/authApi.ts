@@ -100,29 +100,4 @@ export const authApi = {
     email?: string;
     phone?: string;
     password?: string;
-  }): Promise<{ message: string; user: any }> => {
-    try {
-      const response = await axiosInstance.put('/auth/profile', data);
-      return response.data;
-    } catch (error: any) {
-      if (error.response?.data?.message) {
-        throw new Error(error.response.data.message);
-      }
-      throw new Error('Cập nhật thông tin thất bại');
-    }
-  },
-  loginGoogle: async (token: string): Promise<LoginApiResponse> => {
-    try {
-      const response = await axiosInstance.post<LoginApiResponse>(
-        '/auth/google',
-        { token },
-      );
-      return response.data;
-    } catch (error: any) {
-      if (error.response?.data?.message) {
-        throw new Error(error.response.data.message);
-      }
-      throw new Error('Đăng nhập Google thất bại. Vui lòng thử lại.');
-    }
-  },
-};
+
