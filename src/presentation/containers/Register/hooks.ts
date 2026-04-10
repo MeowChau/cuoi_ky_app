@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { Alert } from 'react-native';
+import { container } from '../../../di/container';
+import { TOKENS } from '../../../di/tokens';
 import { RegisterUseCase } from '../../../domain/usecases/RegisterUseCase';
-import { AuthRepositoryImpl } from '../../../data/repositories/authRepositoryImpl';
 import {
   authStart,
   authSuccess,
@@ -20,11 +21,7 @@ export const useRegister = (onSuccess: () => void) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const authRepository = new AuthRepositoryImpl();
-  const registerUseCase = new RegisterUseCase(authRepository);
-
   const handleRegister = async () => {
-    // Validation
     if (!name.trim() || !email.trim() || !phone.trim() || !password.trim()) {
       Alert.alert('Lỗi', 'Vui lòng điền đầy đủ thông tin');
       return;
@@ -39,6 +36,7 @@ export const useRegister = (onSuccess: () => void) => {
     dispatch(authStart());
 
     try {
+      const registerUseCase = container.resolve<RegisterUseCase>(TOKENS.RegisterUseCase);
       const response = await registerUseCase.execute({
         name,
         email,
@@ -53,7 +51,6 @@ export const useRegister = (onSuccess: () => void) => {
         }),
       );
 
-      // ✅ BỎ Alert, gọi onSuccess ngay
       onSuccess();
     } catch (error: any) {
       const errorMessage = error.message || 'Đăng ký thất bại';

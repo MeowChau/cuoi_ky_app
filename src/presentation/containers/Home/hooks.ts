@@ -1,10 +1,9 @@
-// src/presentation/containers/Home/hooks.ts
 import { useState, useEffect } from 'react';
+import { container } from '../../../di/container';
+import { TOKENS } from '../../../di/tokens';
 import { SearchPlacesUseCase } from '../../../domain/usecases/SearchPlacesUseCase';
 import { GetWeatherForecastUseCase } from '../../../domain/usecases/GetWeatherForecastUseCase';
-import { GetFeaturedPlacesUseCase } from '../../../domain/usecases/GetFeaturedPlacesUseCase'; // ✅ Import usecase này
-import { PlaceRepositoryImpl } from '../../../data/repositories/placeRepositoryImpl';
-import { WeatherRepositoryImpl } from '../../../data/repositories/weatherRepositoryImpl';
+import { GetFeaturedPlacesUseCase } from '../../../domain/usecases/GetFeaturedPlacesUseCase';
 import { Place } from '../../../domain/entities/Place';
 import { Weather, City } from '../../../domain/entities/Weather';
 import { VIETNAM_CITIES } from '../../../data/api/weatherApi';
@@ -17,9 +16,6 @@ export const useSearch = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const placeRepository = new PlaceRepositoryImpl();
-  const searchUseCase = new SearchPlacesUseCase(placeRepository);
-
   const handleSearch = async (keyword: string) => {
     if (!keyword || keyword.trim().length === 0) {
       setSearchResults([]);
@@ -31,6 +27,7 @@ export const useSearch = () => {
     setError(null);
 
     try {
+      const searchUseCase = container.resolve<SearchPlacesUseCase>(TOKENS.SearchPlacesUseCase);
       const results = await searchUseCase.execute({ keyword });
       setSearchResults(results);
 
@@ -64,14 +61,10 @@ export const useSearch = () => {
 // ----------------------------------------------------
 // 2. HOOK: HOME DATA (LẤY ĐỊA ĐIỂM NỔI BẬT TỪ API)
 // ----------------------------------------------------
-// 🔥 Đây là phần bị thiếu gây ra lỗi
 export const useHomeData = () => {
   const [featuredPlaces, setFeaturedPlaces] = useState<Place[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const placeRepository = new PlaceRepositoryImpl();
-  const getFeaturedUseCase = new GetFeaturedPlacesUseCase(placeRepository);
 
   useEffect(() => {
     fetchFeatured();
@@ -80,6 +73,7 @@ export const useHomeData = () => {
   const fetchFeatured = async () => {
     setIsLoading(true);
     try {
+      const getFeaturedUseCase = container.resolve<GetFeaturedPlacesUseCase>(TOKENS.GetFeaturedPlacesUseCase);
       const places = await getFeaturedUseCase.execute();
       setFeaturedPlaces(places);
     } catch (err: any) {
@@ -102,9 +96,6 @@ export const useWeatherForecast = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const weatherRepository = new WeatherRepositoryImpl();
-  const getWeatherUseCase = new GetWeatherForecastUseCase(weatherRepository);
-
   useEffect(() => {
     fetchWeather();
   }, [selectedCity]);
@@ -114,6 +105,7 @@ export const useWeatherForecast = () => {
     setError(null);
 
     try {
+      const getWeatherUseCase = container.resolve<GetWeatherForecastUseCase>(TOKENS.GetWeatherForecastUseCase);
       const weather = await getWeatherUseCase.execute({ city: selectedCity });
       setWeatherData(weather);
     } catch (err: any) {

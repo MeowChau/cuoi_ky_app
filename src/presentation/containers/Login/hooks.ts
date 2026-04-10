@@ -1,16 +1,17 @@
 import { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { Alert } from 'react-native';
+import { container } from '../../../di/container';
+import { TOKENS } from '../../../di/tokens';
 import { LoginUseCase } from '../../../domain/usecases/LoginUseCase';
-import { AuthRepositoryImpl } from '../../../data/repositories/authRepositoryImpl';
+import { GoogleLoginUseCase } from '../../../domain/usecases/GoogleLoginUseCase';
+import { UpdateProfileUseCase } from '../../../domain/usecases/UpdateProfileUseCase';
 import {
   authStart,
   authSuccess,
   authFailure,
 } from '../../store/slices/authSlice';
-import { GoogleLoginUseCase } from '../../../domain/usecases/GoogleLoginUseCase';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
-import { UpdateProfileUseCase } from '../../../domain/usecases/UpdateProfileUseCase';
 
 export const useLogin = (onSuccess: () => void) => {
   const dispatch = useDispatch();
@@ -18,9 +19,6 @@ export const useLogin = (onSuccess: () => void) => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-
-  const authRepository = new AuthRepositoryImpl();
-  const loginUseCase = new LoginUseCase(authRepository);
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
@@ -32,6 +30,7 @@ export const useLogin = (onSuccess: () => void) => {
     dispatch(authStart());
 
     try {
+      const loginUseCase = container.resolve<LoginUseCase>(TOKENS.LoginUseCase);
       const response = await loginUseCase.execute({ email, password });
 
       dispatch(
@@ -41,7 +40,6 @@ export const useLogin = (onSuccess: () => void) => {
         }),
       );
 
-      // ✅ BỎ Alert, gọi onSuccess ngay
       onSuccess();
     } catch (error: any) {
       const errorMessage = error.message || 'Đăng nhập thất bại';
@@ -63,6 +61,7 @@ export const useLogin = (onSuccess: () => void) => {
     handleLogin,
   };
 };
+
 export const useGoogleLogin = (onSuccess: (user: any) => void) => {
   const dispatch = useDispatch();
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -70,42 +69,32 @@ export const useGoogleLogin = (onSuccess: (user: any) => void) => {
   const [googleUser, setGoogleUser] = useState<any>(null);
   const [googleToken, setGoogleToken] = useState<string>('');
 
-  const authRepository = new AuthRepositoryImpl();
-  const googleLoginUseCase = new GoogleLoginUseCase(authRepository);
-
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
     dispatch(authStart());
 
     try {
-      // 1. Check if device supports Google Play Services
       await GoogleSignin.hasPlayServices();
 
-      // 2. Sign in and get user info
       const userInfo = await GoogleSignin.signIn();
-      
-      // 3. Get ID token
       const idToken = userInfo.data?.idToken;
 
       if (!idToken) {
         throw new Error('Không lấy được token từ Google');
       }
 
-      // 4. Call backend API
+      const googleLoginUseCase = container.resolve<GoogleLoginUseCase>(TOKENS.GoogleLoginUseCase);
       const response = await googleLoginUseCase.execute(idToken);
 
-      // 5. Check if user needs to complete profile
-      const needsCompletion = !response.user.phone || 
-                             !response.user.name || 
+      const needsCompletion = !response.user.phone ||
+                             !response.user.name ||
                              response.user.name.trim().length === 0;
 
       if (needsCompletion) {
-        // User mới - hiện modal
         setGoogleUser(response.user);
         setGoogleToken(response.token);
         setShowCompleteProfile(true);
       } else {
-        // User cũ - vào app ngay
         dispatch(
           authSuccess({
             user: response.user,
@@ -115,16 +104,15 @@ export const useGoogleLogin = (onSuccess: (user: any) => void) => {
         onSuccess(response.user);
       }
     } catch (error: any) {
-      // ⭐ LOG CHI TIẾT HƠN
       console.error('============ Google Sign-In Error ============');
       console.error('Error object:', JSON.stringify(error, null, 2));
       console.error('Error code:', error.code);
       console.error('Error message:', error.message);
       console.error('Error stack:', error.stack);
       console.error('==============================================');
-      
+
       let errorMessage = 'Đăng nhập Google thất bại';
-      
+
       if (error.code === 'SIGN_IN_CANCELLED') {
         errorMessage = 'Bạn đã hủy đăng nhập';
       } else if (error.code === 'IN_PROGRESS') {
@@ -138,7 +126,7 @@ export const useGoogleLogin = (onSuccess: (user: any) => void) => {
       } else if (error.message) {
         errorMessage = error.message;
       }
-    
+
       dispatch(authFailure(errorMessage));
       Alert.alert('Lỗi', errorMessage);
     } finally {
@@ -150,14 +138,12 @@ export const useGoogleLogin = (onSuccess: (user: any) => void) => {
     setIsGoogleLoading(true);
 
     try {
-      // Update profile
-      const updateProfileUseCase = new UpdateProfileUseCase(authRepository);
+      const updateProfileUseCase = container.resolve<UpdateProfileUseCase>(TOKENS.UpdateProfileUseCase);
       const updatedUser = await updateProfileUseCase.execute({
         name: data.name,
         phone: data.phone,
       });
 
-      // Dispatch to Redux
       dispatch(
         authSuccess({
           user: updatedUser,

@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { Alert } from 'react-native';
+import { container } from '../../../di/container';
+import { TOKENS } from '../../../di/tokens';
 import { SendMessageUseCase } from '../../../domain/usecases/SendMessageUseCase';
 import { CreateSmartPlanUseCase } from '../../../domain/usecases/CreateSmartPlanUseCase';
 import { CreateTripUseCase } from '../../../domain/usecases/CreateTripUseCase';
-import { ChatRepositoryImpl } from '../../../data/repositories/chatRepositoryImpl';
-import { TripRepositoryImpl } from '../../../data/repositories/tripRepositoryImpl';
+import { TripRepository } from '../../../domain/repositories/TripRepository';
 import { ChatMessage, TripPlan } from '../../../domain/entities/ChatMessage';
 import { MOCK_CHAT_HISTORY } from './mockData';
 import { CreateTripRequest } from '../../../data/api/tripApi';
@@ -16,12 +17,6 @@ export const useChat = () => {
   const [error, setError] = useState<string | null>(null);
   const [showSmartPlanForm, setShowSmartPlanForm] = useState(false);
   const scrollViewRef = useRef<any>(null);
-
-  const chatRepository = new ChatRepositoryImpl();
-  const tripRepository = new TripRepositoryImpl();
-  const sendMessageUseCase = new SendMessageUseCase(chatRepository);
-  const createSmartPlanUseCase = new CreateSmartPlanUseCase(chatRepository);
-  const createTripUseCase = new CreateTripUseCase(tripRepository);
 
   useEffect(() => {
     setTimeout(() => {
@@ -75,6 +70,7 @@ export const useChat = () => {
     setIsLoading(true);
 
     try {
+      const sendMessageUseCase = container.resolve<SendMessageUseCase>(TOKENS.SendMessageUseCase);
       const aiResponse = await sendMessageUseCase.execute({
         message: messageText,
         conversationHistory: messages.filter(m => !m.isTyping),
@@ -100,13 +96,12 @@ export const useChat = () => {
     }
   };
 
-  // ✅ SỬA: HANDLE CREATE SMART PLAN
   const handleCreateSmartPlan = async (params: {
     destination: string;
     startDate: string;
     duration: number;
     budget: number;
-    transportMode: 'flight' |  'personal';
+    transportMode: 'flight' | 'personal';
   }) => {
     console.log('🚀 handleCreateSmartPlan called with:', params);
 
@@ -115,9 +110,7 @@ export const useChat = () => {
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
-      text: `Tạo kế hoạch du lịch ${params.destination} ${
-        params.duration
-      } ngày, ngân sách ${formatMoney(params.budget)}`,
+      text: `Tạo kế hoạch du lịch ${params.destination} ${params.duration} ngày, ngân sách ${formatMoney(params.budget)}`,
       sender: 'user',
       timestamp: new Date(),
     };
@@ -135,6 +128,7 @@ export const useChat = () => {
     try {
       console.log('📤 Calling createSmartPlanUseCase.execute...');
 
+      const createSmartPlanUseCase = container.resolve<CreateSmartPlanUseCase>(TOKENS.CreateSmartPlanUseCase);
       const tripPlan = await createSmartPlanUseCase.execute(params);
 
       console.log('✅ TripPlan received:', tripPlan);
@@ -147,7 +141,7 @@ export const useChat = () => {
 
       const planMessage: ChatMessage = {
         id: Date.now().toString(),
-        text: '', // Không hiển thị text để tránh trùng lặp với ItineraryView
+        text: '',
         sender: 'ai',
         timestamp: new Date(),
         tripPlan,
@@ -206,7 +200,6 @@ export const useChat = () => {
     setError(null);
   };
 
-  // ✅ HANDLE CONFIRM TRIP PLAN
   const handleConfirmTripPlan = async (tripPlan: TripPlan) => {
     try {
       setIsLoading(true);
@@ -223,7 +216,6 @@ export const useChat = () => {
         breakdown: tripPlan.budget.breakdown,
       };
 
-      // Transform TripPlan to CreateTripRequest
       const tripRequest: CreateTripRequest = {
         title: tripPlan.title,
         startDate: tripPlan.startDate.toISOString().split('T')[0],
@@ -236,16 +228,14 @@ export const useChat = () => {
             departureDate: tripPlan.endDate.toISOString().split('T')[0],
           },
         ],
-        budget: {
-          total: tripPlan.budget.total,
-        },
+        budget: { total: tripPlan.budget.total },
       };
 
-      // Tạo trip cơ bản trước
+      const createTripUseCase = container.resolve<CreateTripUseCase>(TOKENS.CreateTripUseCase);
       const trip = await createTripUseCase.execute(tripRequest);
 
-      // Sau đó update với itinerary và budget breakdown đầy đủ
       if (trip.id) {
+        const tripRepository = container.resolve<TripRepository>(TOKENS.TripRepository);
         await tripRepository.updateTrip(trip.id, {
           budget: budgetPayload,
           destinations: tripRequest.destinations,
@@ -270,7 +260,6 @@ export const useChat = () => {
         [{ text: 'OK' }],
       );
 
-      // Thêm message xác nhận vào chat
       const confirmMessage: ChatMessage = {
         id: Date.now().toString(),
         text: `✅ Đã lưu lịch trình "${tripPlan.title}"  thành công!`,
@@ -279,7 +268,6 @@ export const useChat = () => {
       };
       setMessages(prev => [...prev, confirmMessage]);
 
-      // Scroll to bottom
       setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
       }, 100);
@@ -296,11 +284,8 @@ export const useChat = () => {
     }
   };
 
-  // ✅ HANDLE EDIT TRIP PLAN
   const handleEditTripPlan = (tripPlan: TripPlan) => {
-    // Mở lại SmartPlanForm với dữ liệu hiện tại
     setShowSmartPlanForm(true);
-    // Có thể pre-fill form với dữ liệu từ tripPlan
     console.log('Edit trip plan:', tripPlan);
   };
 
@@ -321,80 +306,6 @@ export const useChat = () => {
     clearChat,
   };
 };
-
-// FORMAT TRIP PLAN TO TEXT
-function formatTripPlanMessage(plan: TripPlan): string {
-  let message = `✅ **${plan.title}**\n\n`;
-  message += `📍 Điểm đến: ${plan.destination}\n`;
-  message += `📅 Thời gian: ${formatDate(plan.startDate)} - ${formatDate(
-    plan.endDate,
-  )}\n`;
-  message += `⏱️ Thời lượng: ${plan.duration} ngày\n`;
-  message += `💰 Tổng ngân sách: ${formatMoney(plan.budget.total)}\n\n`;
-
-  // ⬅️ KIỂM TRA BREAKDOWN CÓ GIÁ TRỊ > 0 KHÔNG
-  const breakdown = plan.budget.breakdown;
-  const hasBreakdown =
-    breakdown.flights > 0 ||
-    breakdown.accommodation > 0 ||
-    breakdown.food > 0 ||
-    breakdown.activities > 0 ||
-    breakdown.transport > 0 ||
-    breakdown.others > 0;
-
-  if (hasBreakdown) {
-    message += `**📊 Chi phí dự kiến:**\n`;
-    if (breakdown.flights > 0) {
-      message += `- ✈️ Vé máy bay: ${formatMoney(breakdown.flights)}\n`;
-    }
-    if (breakdown.accommodation > 0) {
-      message += `- 🏨 Khách sạn: ${formatMoney(breakdown.accommodation)}\n`;
-    }
-    if (breakdown.food > 0) {
-      message += `- 🍽️ Ăn uống: ${formatMoney(breakdown.food)}\n`;
-    }
-    if (breakdown.activities > 0) {
-      message += `- 🎯 Hoạt động: ${formatMoney(breakdown.activities)}\n`;
-    }
-    if (breakdown.transport > 0) {
-      message += `- 🚕 Di chuyển: ${formatMoney(breakdown.transport)}\n`;
-    }
-    if (breakdown.others > 0) {
-      message += `- 💼 Chi phí khác: ${formatMoney(breakdown.others)}\n`;
-    }
-    message += '\n';
-  } else {
-    message += `⚠️ _Chi phí chi tiết sẽ được cập nhật sau khi phân tích lịch trình_\n\n`;
-  }
-
-  if (plan.itinerary && plan.itinerary.length > 0) {
-    message += `**📅 Lịch trình chi tiết:**\n`;
-    plan.itinerary.forEach(day => {
-      message += `\n**Ngày ${day.day}** (${formatDate(day.date)})\n`;
-      if (day.activities && day.activities.length > 0) {
-        day.activities.forEach(activity => {
-          const costStr =
-            activity.cost > 0 ? ` - ${formatMoney(activity.cost)}` : '';
-          message += `• ${activity.time} - ${activity.title}${costStr}\n`;
-        });
-      } else {
-        message += `_Chưa có hoạt động cụ thể_\n`;
-      }
-    });
-  } else {
-    message += `⚠️ _Lịch trình chi tiết sẽ được cập nhật sau_\n`;
-  }
-
-  return message;
-}
-
-function formatDate(date: Date): string {
-  return date.toLocaleDateString('vi-VN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
-}
 
 function formatMoney(amount: number): string {
   return new Intl.NumberFormat('vi-VN', {

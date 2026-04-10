@@ -8,7 +8,8 @@ import {
   tripsFailure,
   tripDeleted,
 } from '../../store/slices/tripsSlice';
-import { TripRepositoryImpl } from '../../../data/repositories/tripRepositoryImpl';
+import { container } from '../../../di/container';
+import { TOKENS } from '../../../di/tokens';
 import { GetTripsUseCase } from '../../../domain/usecases/GetTripsUseCase';
 import { DeleteTripUseCase } from '../../../domain/usecases/DeleteTripUseCase';
 
@@ -18,23 +19,18 @@ export const useTrips = () => {
     (state: RootState) => state.trips,
   );
 
-  const tripRepository = new TripRepositoryImpl();
-  const getTripsUseCase = new GetTripsUseCase(tripRepository);
-  const deleteTripUseCase = new DeleteTripUseCase(tripRepository);
-
-  // Fetch trips
   const fetchTrips = useCallback(async () => {
     dispatch(tripsStart());
     try {
-      const trips = await getTripsUseCase.execute();
-      dispatch(tripsSuccess(trips));
-    } catch (error: any) {
-      const errorMessage = error.message || 'Không thể tải danh sách chuyến đi';
+      const getTripsUseCase = container.resolve<GetTripsUseCase>(TOKENS.GetTripsUseCase);
+      const result = await getTripsUseCase.execute();
+      dispatch(tripsSuccess(result));
+    } catch (err: any) {
+      const errorMessage = err.message || 'Không thể tải danh sách chuyến đi';
       dispatch(tripsFailure(errorMessage));
     }
   }, [dispatch]);
 
-  // Delete trip
   const handleDeleteTrip = useCallback(
     async (id: string, title: string) => {
       Alert.alert(
@@ -47,11 +43,12 @@ export const useTrips = () => {
             style: 'destructive',
             onPress: async () => {
               try {
+                const deleteTripUseCase = container.resolve<DeleteTripUseCase>(TOKENS.DeleteTripUseCase);
                 await deleteTripUseCase.execute(id);
                 dispatch(tripDeleted(id));
                 Alert.alert('Thành công', 'Đã xóa chuyến đi');
-              } catch (error: any) {
-                Alert.alert('Lỗi', error.message || 'Xóa chuyến đi thất bại');
+              } catch (err: any) {
+                Alert.alert('Lỗi', err.message || 'Xóa chuyến đi thất bại');
               }
             },
           },
@@ -61,7 +58,6 @@ export const useTrips = () => {
     [dispatch],
   );
 
-  // Load trips on mount
   useEffect(() => {
     fetchTrips();
   }, []);
