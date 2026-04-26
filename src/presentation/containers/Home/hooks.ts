@@ -6,13 +6,29 @@ import { GetWeatherForecastUseCase } from '../../../domain/usecases/GetWeatherFo
 import { GetFeaturedPlacesUseCase } from '../../../domain/usecases/GetFeaturedPlacesUseCase';
 import { Place } from '../../../domain/entities/Place';
 import { Weather, City } from '../../../domain/entities/Weather';
-import { VIETNAM_CITIES } from '../../../data/api/weatherApi';
+import {
+  VIETNAM_CITIES,
+  weatherApi,
+  getWeatherEmoji,
+} from '../../../data/api/weatherApi';
+
+export interface PlaceCurrentWeather {
+  temp: number;
+  icon: string;
+  description: string;
+  isLoading: boolean;
+}
+
+export type PlaceCurrentWeatherMap = Record<string, PlaceCurrentWeather>;
 
 // ----------------------------------------------------
 // 1. HOOK: SEARCH (TÌM KIẾM)
 // ----------------------------------------------------
 export const useSearch = () => {
   const [searchResults, setSearchResults] = useState<Place[]>([]);
+  const [weatherByPlace, setWeatherByPlace] = useState<PlaceCurrentWeatherMap>(
+    {},
+  );
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,9 +43,65 @@ export const useSearch = () => {
     setError(null);
 
     try {
-      const searchUseCase = container.resolve<SearchPlacesUseCase>(TOKENS.SearchPlacesUseCase);
+      const searchUseCase = container.resolve<SearchPlacesUseCase>(
+        TOKENS.SearchPlacesUseCase,
+      );
       const results = await searchUseCase.execute({ keyword });
       setSearchResults(results);
+
+      // Lấy thời tiết hiện tại cho tối đa 8 kết quả đầu để tránh gọi API quá nhiều.
+      const weatherTargets = results
+        .filter(place => !!place.lat && !!place.lng)
+        .slice(0, 8);
+
+      if (weatherTargets.length > 0) {
+        const initialWeatherMap: PlaceCurrentWeatherMap = {};
+        weatherTargets.forEach(place => {
+          initialWeatherMap[place.id] = {
+            temp: 0,
+            icon: '⏳',
+            description: 'Đang tải thời tiết...',
+            isLoading: true,
+          };
+        });
+        setWeatherByPlace(initialWeatherMap);
+
+        const weatherPairs = await Promise.all(
+          weatherTargets.map(async place => {
+            try {
+              const response = await weatherApi.getCurrentWeather(
+                place.lat,
+                place.lng,
+              );
+
+              return [
+                place.id,
+                {
+                  temp: Math.round(response.main.temp),
+                  icon: getWeatherEmoji(response.weather[0]?.icon || ''),
+                  description:
+                    response.weather[0]?.description || 'Không xác định',
+                  isLoading: false,
+                },
+              ] as const;
+            } catch {
+              return [
+                place.id,
+                {
+                  temp: 0,
+                  icon: '⚠️',
+                  description: 'Không lấy được thời tiết',
+                  isLoading: false,
+                },
+              ] as const;
+            }
+          }),
+        );
+
+        setWeatherByPlace(Object.fromEntries(weatherPairs));
+      } else {
+        setWeatherByPlace({});
+      }
 
       if (results.length === 0) {
         setError('Không tìm thấy địa điểm phù hợp');
@@ -38,6 +110,7 @@ export const useSearch = () => {
       console.error('❌ Search error:', err);
       setError(err.message || 'Lỗi tìm kiếm');
       setSearchResults([]);
+      setWeatherByPlace({});
     } finally {
       setIsSearching(false);
     }
@@ -45,12 +118,14 @@ export const useSearch = () => {
 
   const clearSearch = () => {
     setSearchResults([]);
+    setWeatherByPlace({});
     setError(null);
     setIsSearching(false);
   };
 
   return {
     searchResults,
+    weatherByPlace,
     isSearching,
     error,
     handleSearch,
@@ -73,7 +148,9 @@ export const useHomeData = () => {
   const fetchFeatured = async () => {
     setIsLoading(true);
     try {
-      const getFeaturedUseCase = container.resolve<GetFeaturedPlacesUseCase>(TOKENS.GetFeaturedPlacesUseCase);
+      const getFeaturedUseCase = container.resolve<GetFeaturedPlacesUseCase>(
+        TOKENS.GetFeaturedPlacesUseCase,
+      );
       const places = await getFeaturedUseCase.execute();
       setFeaturedPlaces(places);
     } catch (err: any) {
@@ -92,8 +169,10 @@ export const useHomeData = () => {
 // ----------------------------------------------------
 export const useWeatherForecast = () => {
   const [selectedCity, setSelectedCity] = useState<City>(VIETNAM_CITIES[0]);
+  const [citySearchKeyword, setCitySearchKeyword] = useState('');
   const [weatherData, setWeatherData] = useState<Weather | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSearchingCity, setIsSearchingCity] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -105,7 +184,9 @@ export const useWeatherForecast = () => {
     setError(null);
 
     try {
-      const getWeatherUseCase = container.resolve<GetWeatherForecastUseCase>(TOKENS.GetWeatherForecastUseCase);
+      const getWeatherUseCase = container.resolve<GetWeatherForecastUseCase>(
+        TOKENS.GetWeatherForecastUseCase,
+      );
       const weather = await getWeatherUseCase.execute({ city: selectedCity });
       setWeatherData(weather);
     } catch (err: any) {
@@ -118,6 +199,41 @@ export const useWeatherForecast = () => {
 
   const handleCityChange = (city: City) => {
     setSelectedCity(city);
+    setCitySearchKeyword(city.name);
+  };
+
+  const handleSearchCityWeather = async (keyword: string) => {
+    const query = keyword.trim();
+    if (!query) {
+      setError('Vui lòng nhập tỉnh/thành để tìm thời tiết');
+      return;
+    }
+
+    setIsSearchingCity(true);
+    setError(null);
+
+    try {
+      const cityResult = await weatherApi.searchCityByName(query, 'VN');
+      if (!cityResult) {
+        setError(`Không tìm thấy tỉnh/thành: ${query}`);
+        return;
+      }
+
+      const resolvedCity: City = {
+        id: cityResult.name.toLowerCase().replace(/\s+/g, '-'),
+        name: cityResult.name,
+        lat: cityResult.lat,
+        lon: cityResult.lon,
+      };
+
+      setSelectedCity(resolvedCity);
+      setCitySearchKeyword(cityResult.name);
+    } catch (err: any) {
+      console.error('❌ Search city weather error:', err);
+      setError(err.message || 'Không thể tìm thời tiết theo tỉnh/thành');
+    } finally {
+      setIsSearchingCity(false);
+    }
   };
 
   const refetch = () => {
@@ -127,10 +243,14 @@ export const useWeatherForecast = () => {
   return {
     cities: VIETNAM_CITIES,
     selectedCity,
+    citySearchKeyword,
+    setCitySearchKeyword,
     weatherData,
     isLoading,
+    isSearchingCity,
     error,
     handleCityChange,
+    handleSearchCityWeather,
     refetch,
   };
 };

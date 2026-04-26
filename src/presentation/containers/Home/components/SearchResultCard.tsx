@@ -8,9 +8,19 @@ import { Size } from '../../../../theme/sizes';
 interface SearchResultCardProps {
   place: Place;
   onPress: () => void;
+  currentWeather?: {
+    temp: number;
+    icon: string;
+    description: string;
+    isLoading: boolean;
+  };
 }
 
-export const SearchResultCard: React.FC<SearchResultCardProps> = ({ place, onPress }) => {
+export const SearchResultCard: React.FC<SearchResultCardProps> = ({
+  place,
+  onPress,
+  currentWeather,
+}) => {
   return (
     <CHCTouchable style={styles.card} onPress={onPress}>
       {/* Image */}
@@ -19,19 +29,29 @@ export const SearchResultCard: React.FC<SearchResultCardProps> = ({ place, onPre
         style={styles.image}
         resizeMode="cover"
       />
-      
+
       <View style={styles.content}>
         {/* Name */}
         <CHCText type="Heading4" numberOfLines={1}>
           {place.name}
         </CHCText>
-        
+
         {/* Location */}
         <View style={styles.locationRow}>
           <CHCText type="Body3" color={Colors.Gray500} numberOfLines={1}>
             📍 {place.location}
           </CHCText>
         </View>
+
+        {currentWeather && (
+          <View style={styles.weatherRow}>
+            <CHCText type="Body3" color={Colors.Primary700} numberOfLines={1}>
+              {currentWeather.isLoading
+                ? '⏳ Đang tải thời tiết...'
+                : `🌡️ ${currentWeather.temp}°C · ${currentWeather.icon} ${currentWeather.description}`}
+            </CHCText>
+          </View>
+        )}
 
         {/* Footer: Rating + Category */}
         <View style={styles.footer}>
@@ -66,7 +86,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.Gray100,
   },
-  
+
   image: {
     width: 60,
     height: 60,
@@ -74,12 +94,15 @@ const styles = StyleSheet.create({
     marginRight: Size.Spacing12,
     backgroundColor: Colors.Gray100,
   },
-  
+
   content: {
     flex: 1,
   },
 
   locationRow: {
+    marginTop: Size.Spacing4,
+  },
+  weatherRow: {
     marginTop: Size.Spacing4,
   },
 

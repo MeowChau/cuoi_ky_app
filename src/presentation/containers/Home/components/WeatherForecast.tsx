@@ -1,7 +1,12 @@
 // src/presentation/containers/Home/components/WeatherForecast.tsx
 import React from 'react';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
-import { CHCText, CHCTouchable } from '../../../components';
+import {
+  CHCText,
+  CHCTouchable,
+  CHCTextInput,
+  CHCButton,
+} from '../../../components';
 import { CitySelector } from './CitySelector';
 import { MainWeatherCard } from './MainWeatherCard';
 import { NextDayCard } from './NextDayCard';
@@ -13,15 +18,37 @@ export const WeatherForecast: React.FC = () => {
   const {
     cities,
     selectedCity,
+    citySearchKeyword,
+    setCitySearchKeyword,
     weatherData,
     isLoading,
+    isSearchingCity,
     error,
     handleCityChange,
+    handleSearchCityWeather,
     refetch,
   } = useWeatherForecast();
 
   return (
     <View style={styles.container}>
+      {/* Search by Province */}
+      <View style={styles.searchContainer}>
+        <CHCTextInput
+          placeholder="Tìm thời tiết theo tỉnh/thành (VD: Huế, Cần Thơ)"
+          value={citySearchKeyword}
+          onChangeText={setCitySearchKeyword}
+          onSubmitEditing={() => handleSearchCityWeather(citySearchKeyword)}
+          containerStyle={styles.searchInput}
+        />
+        <CHCButton
+          title="Tìm"
+          onPress={() => handleSearchCityWeather(citySearchKeyword)}
+          isLoading={isSearchingCity}
+          disabled={isSearchingCity}
+          style={styles.searchButton}
+        />
+      </View>
+
       {/* City Selector */}
       <CitySelector
         cities={cities}
@@ -33,7 +60,11 @@ export const WeatherForecast: React.FC = () => {
       {isLoading && (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.Primary500} />
-          <CHCText type="Body2" color={Colors.Gray500} style={styles.loadingText}>
+          <CHCText
+            type="Body2"
+            color={Colors.Gray500}
+            style={styles.loadingText}
+          >
             Đang tải dữ liệu thời tiết...
           </CHCText>
         </View>
@@ -66,14 +97,14 @@ export const WeatherForecast: React.FC = () => {
           {weatherData.forecast.length > 1 && (
             <View style={styles.nextDaysSection}>
               {/* Header - Cùng padding với "Dự báo thời tiết" */}
-              <CHCText 
-                type="Heading3" 
+              <CHCText
+                type="Heading3"
                 color={Colors.Gray800}
                 style={styles.nextDaysTitle}
               >
                 Dự báo {weatherData.forecast.length - 1} ngày tới
               </CHCText>
-              
+
               {/* Cards Container */}
               <View style={styles.nextDaysContainer}>
                 {weatherData.forecast.slice(1).map((day, index) => (
@@ -91,6 +122,21 @@ export const WeatherForecast: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     marginBottom: Size.Spacing24,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: Size.Spacing8,
+    paddingHorizontal: Size.Spacing4,
+  },
+  searchInput: {
+    flex: 1,
+    marginBottom: 0,
+  },
+  searchButton: {
+    height: 56,
+    minWidth: 84,
+    marginBottom: 0,
   },
   loadingContainer: {
     alignItems: 'center',

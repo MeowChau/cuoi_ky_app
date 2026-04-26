@@ -4,6 +4,25 @@ import { OPENWEATHER_API_KEY } from '@env';
 import { WeatherApiResponse } from '../models/WeatherResponse';
 
 const OPENWEATHER_BASE_URL = 'https://api.openweathermap.org/data/2.5';
+const OPENWEATHER_GEO_URL = 'https://api.openweathermap.org/geo/1.0';
+
+export interface CurrentWeatherResponse {
+  name: string;
+  main: {
+    temp: number;
+    feels_like: number;
+    humidity: number;
+  };
+  weather: Array<{
+    id: number;
+    main: string;
+    description: string;
+    icon: string;
+  }>;
+  wind: {
+    speed: number;
+  };
+}
 
 // ✅ DANH SÁCH CÁC THÀNH PHỐ VIỆT NAM
 export const VIETNAM_CITIES = [
@@ -20,7 +39,7 @@ export const weatherApi = {
    */
   getForecast: async (
     lat: number,
-    lon: number
+    lon: number,
   ): Promise<WeatherApiResponse> => {
     try {
       console.log('📤 Weather API Request:', { lat, lon });
@@ -35,15 +54,82 @@ export const weatherApi = {
             units: 'metric', // Celsius
             lang: 'vi', // Tiếng Việt
           },
-        }
+        },
       );
 
       console.log('✅ Weather API Response:', response.status);
       return response.data;
     } catch (error: any) {
-      console.error('❌ Weather API Error:', error.response?.data || error.message);
+      console.error(
+        '❌ Weather API Error:',
+        error.response?.data || error.message,
+      );
       throw new Error(
-        error.response?.data?.message || 'Không thể lấy dữ liệu thời tiết'
+        error.response?.data?.message || 'Không thể lấy dữ liệu thời tiết',
+      );
+    }
+  },
+
+  getCurrentWeather: async (
+    lat: number,
+    lon: number,
+  ): Promise<CurrentWeatherResponse> => {
+    try {
+      const response = await axios.get<CurrentWeatherResponse>(
+        `${OPENWEATHER_BASE_URL}/weather`,
+        {
+          params: {
+            lat,
+            lon,
+            appid: OPENWEATHER_API_KEY,
+            units: 'metric',
+            lang: 'vi',
+          },
+        },
+      );
+
+      return response.data;
+    } catch (error: any) {
+      console.error(
+        '❌ Current Weather API Error:',
+        error.response?.data || error.message,
+      );
+      throw new Error(
+        error.response?.data?.message || 'Không thể lấy thời tiết hiện tại',
+      );
+    }
+  },
+
+  searchCityByName: async (
+    keyword: string,
+    countryCode: string = 'VN',
+  ): Promise<{ name: string; lat: number; lon: number } | null> => {
+    try {
+      const response = await axios.get<any[]>(`${OPENWEATHER_GEO_URL}/direct`, {
+        params: {
+          q: `${keyword},${countryCode}`,
+          limit: 1,
+          appid: OPENWEATHER_API_KEY,
+        },
+      });
+
+      const first = response.data?.[0];
+      if (!first) {
+        return null;
+      }
+
+      return {
+        name: first.name,
+        lat: first.lat,
+        lon: first.lon,
+      };
+    } catch (error: any) {
+      console.error(
+        '❌ Search City Error:',
+        error.response?.data || error.message,
+      );
+      throw new Error(
+        error.response?.data?.message || 'Không thể tìm tỉnh/thành',
       );
     }
   },
