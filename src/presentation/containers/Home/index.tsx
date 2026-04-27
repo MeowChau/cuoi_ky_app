@@ -21,7 +21,7 @@ const HomeScreen: React.FC = () => {
   
   const [searchQuery, setSearchQuery] = useState('');
   
-  // 🔥 STATE QUẢN LÝ MODAL
+  //  STATE QUẢN LÝ MODAL
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [isModalVisible, setModalVisible] = useState(false);
 

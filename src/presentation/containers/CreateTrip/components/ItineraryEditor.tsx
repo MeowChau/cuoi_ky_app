@@ -28,7 +28,7 @@ export const ItineraryEditor: React.FC<ItineraryEditorProps> = ({
   const [editingActivity, setEditingActivity] = useState<{ dayIndex: number; activityIndex: number } | null>(null);
   const [daysState, setDaysState] = useState<ItineraryDay[]>(itinerary || []);
 
-  // Đồng bộ khi itinerary từ BE thay đổi
+  // Đồng bộ khi  itinerary từ BE thay đổi
   useEffect(() => {
     setDaysState(itinerary || []);
   }, [itinerary]);

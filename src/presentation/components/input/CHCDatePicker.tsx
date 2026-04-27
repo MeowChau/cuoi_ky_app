@@ -56,7 +56,7 @@ export const CHCDatePicker: React.FC<CHCDatePickerProps> = ({
         </CHCText>
       )}
 
-      {/* Input */}
+      {/* Input  */}
       <CHCTouchable onPress={() => setOpen(true)} style={styles.input}>
         <CHCText color={value ? Colors.Gray900 : Colors.Gray400}>
           {displayDate}
