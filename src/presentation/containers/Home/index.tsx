@@ -1,12 +1,6 @@
 // src/presentation/containers/Home/index.tsx
 import React, { useState } from 'react';
-import {
-  View,
-  ScrollView,
-  SafeAreaView,
-  StatusBar,
-  ActivityIndicator,
-} from 'react-native';
+import { View, ScrollView, SafeAreaView, StatusBar, ActivityIndicator } from 'react-native';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
 import { CHCText, CHCTextInput, CHCTouchable } from '../../components';
@@ -24,28 +18,16 @@ import { PlaceDetailModal } from './components/PlaceDetailModal';
 const HomeScreen: React.FC = () => {
   const user = useSelector((state: RootState) => state.auth.user);
   const userName = user?.name || 'Bạn';
-
+  
   const [searchQuery, setSearchQuery] = useState('');
-
-  // 🔥 STATE QUẢN LÝ MODAL
+  
+  //  STATE QUẢN LÝ MODAL
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [isModalVisible, setModalVisible] = useState(false);
 
   // Hook Search & Data
-  const {
-    searchResults,
-    weatherByPlace,
-    isSearching,
-    error: searchError,
-    handleSearch,
-    clearSearch,
-  } = useSearch();
-  const {
-    featuredPlaces,
-    isLoading,
-    error: dataError,
-    refetch,
-  } = useHomeData();
+  const { searchResults, isSearching, error: searchError, handleSearch, clearSearch } = useSearch();
+  const { featuredPlaces, isLoading, error: dataError, refetch } = useHomeData();
 
   // 🔥 HÀM MỞ MODAL
   const handleOpenDetail = (place: Place) => {
@@ -81,8 +63,8 @@ const HomeScreen: React.FC = () => {
   return (
     <SafeAreaView style={homeStyles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={Colors.White} />
-
-      <ScrollView
+      
+      <ScrollView 
         showsVerticalScrollIndicator={false}
         contentContainerStyle={homeStyles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -90,12 +72,8 @@ const HomeScreen: React.FC = () => {
         {/* Header */}
         <View style={homeStyles.header}>
           <View>
-            <CHCText type="Body2" color={Colors.Gray500}>
-              Xin chào 👋
-            </CHCText>
-            <CHCText type="Heading2" style={homeStyles.userName}>
-              {userName}
-            </CHCText>
+            <CHCText type="Body2" color={Colors.Gray500}>Xin chào 👋</CHCText>
+            <CHCText type="Heading2" style={homeStyles.userName}>{userName}</CHCText>
           </View>
           <CHCTouchable style={homeStyles.notificationButton}>
             <CHCText type="Heading2">🔔</CHCText>
@@ -112,42 +90,23 @@ const HomeScreen: React.FC = () => {
               containerStyle={homeStyles.searchInputContainer}
             />
             {searchQuery.length > 0 && (
-              <CHCTouchable
-                style={homeStyles.clearButton}
-                onPress={handleClearSearch}
-              >
-                <CHCText type="Heading3" color={Colors.Gray400}>
-                  ✕
-                </CHCText>
+              <CHCTouchable style={homeStyles.clearButton} onPress={handleClearSearch}>
+                <CHCText type="Heading3" color={Colors.Gray400}>✕</CHCText>
               </CHCTouchable>
             )}
           </View>
-
+          
           {isSearching && (
-            <ActivityIndicator
-              color={Colors.Primary500}
-              style={{ marginTop: 10 }}
-            />
+            <ActivityIndicator color={Colors.Primary500} style={{marginTop: 10}} />
           )}
-
-          {searchError && !isSearching && (
-            <CHCText
-              type="Body3"
-              color={Colors.Red500}
-              style={{ marginTop: 8 }}
-            >
-              ⚠️ {searchError}
-            </CHCText>
-          )}
-
+          
           {hasResults && !isSearching && (
             <View style={homeStyles.searchResultsContainer}>
               <ScrollView style={homeStyles.searchResultsList}>
-                {searchResults.map(place => (
-                  <SearchResultCard
-                    key={place.id}
+                {searchResults.map((place) => (
+                  <SearchResultCard 
+                    key={place.id} 
                     place={place}
-                    currentWeather={weatherByPlace[place.id]}
                     onPress={() => handleOpenDetail(place)} // Mở modal khi click tìm kiếm
                   />
                 ))}
@@ -163,34 +122,26 @@ const HomeScreen: React.FC = () => {
               <View style={homeStyles.sectionHeader}>
                 <CHCText type="Heading3">Địa điểm nổi bật</CHCText>
                 <CHCTouchable onPress={refetch}>
-                  <CHCText type="Body2" color={Colors.Primary500}>
-                    Làm mới
-                  </CHCText>
+                  <CHCText type="Body2" color={Colors.Primary500}>Làm mới</CHCText>
                 </CHCTouchable>
               </View>
 
               {isLoading ? (
-                <View
-                  style={{
-                    height: 200,
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                  }}
-                >
+                <View style={{ height: 200, justifyContent: 'center', alignItems: 'center' }}>
                   <ActivityIndicator size="large" color={Colors.Primary500} />
                 </View>
               ) : (
-                <ScrollView
-                  horizontal
+                <ScrollView 
+                  horizontal 
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={homeStyles.horizontalList}
                 >
-                  {featuredPlaces.map(place => (
-                    <PlaceCard
-                      key={place.id}
-                      place={place}
+                  {featuredPlaces.map((place) => (
+                    <PlaceCard 
+                      key={place.id} 
+                      place={place} 
                       // 🔥 GỌI HÀM MỞ MODAL TẠI ĐÂY
-                      onPress={() => handleOpenDetail(place)}
+                      onPress={() => handleOpenDetail(place)} 
                     />
                   ))}
                 </ScrollView>
@@ -209,11 +160,12 @@ const HomeScreen: React.FC = () => {
       </ScrollView>
 
       {/* 🔥 HIỂN THỊ MODAL Ở CUỐI CÙNG */}
-      <PlaceDetailModal
-        visible={isModalVisible}
-        place={selectedPlace}
-        onClose={handleCloseDetail}
+      <PlaceDetailModal 
+        visible={isModalVisible} 
+        place={selectedPlace} 
+        onClose={handleCloseDetail} 
       />
+
     </SafeAreaView>
   );
 };
